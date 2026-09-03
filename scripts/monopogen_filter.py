@@ -33,17 +33,18 @@ class SNV:
         Returns:
             bool: True if SNV passes all thresholds, False otherwise.
         """
-        if self.Depth_total < thresholds['Depth_total']:
+        #if self.Depth_total < thresholds['Depth_total']:
+        if self.Depth_total < sum([thresholds['Depth_ref'][0], thresholds['Depth_alt'][0]]):
             return False
-        if self.Depth_ref < thresholds['Depth_ref']:
+        if self.Depth_ref < thresholds['Depth_ref'][0]:
             return False
-        if self.Depth_alt < thresholds['Depth_alt']:
+        if self.Depth_alt < thresholds['Depth_alt'][0]:
             return False
-        if self.SVM_pos_score < thresholds['SVM_pos_score']:
+        if self.SVM_pos_score < thresholds['SVM_pos_score'][0]:
             return False
-        if self.LDrefine_merged_score < thresholds['LDrefine_merged_score']:
+        if self.LDrefine_merged_score < thresholds['LDrefine_merged_score'][0]:
             return False
-        if self.BAF_alt > thresholds['BAF_alt']:
+        if self.BAF_alt > thresholds['BAF_alt'][0]:
             return False
         return True
 

@@ -5,10 +5,12 @@ library(dplyr)
 
 args <- commandArgs(trailingOnly = TRUE)
 
-snv_matrix <- args[1]
-cell_barcodes <- args[2]
-output_directory <- args[3]
-sample_id <- args[4]
+output_directory <- args[1]
+sample_id <- args[2]
+cell_barcodes <- args[3]
+cells_per_snv <- as.integer(args[4])
+snvs_per_cell <- as.integer(args[5])
+ncores <- as.integer(args[6])
 
 filter_snv_data <- function(
   snv_mat, 
@@ -16,7 +18,8 @@ filter_snv_data <- function(
 ) {
   snv_mat <- readRDS(snv_mat)
   cell_barcodes <- read.delim(cell_barcodes)
-  keep_barcodes <- cell_barcodes$x
+  #keep_barcodes <- cell_barcodes$x
+  keep_barcodes <- cell_barcodes$cell_barcodes
   keep_barcodes_in_snv <- intersect(keep_barcodes, colnames(snv_mat))
   snv_mat_filtered <- snv_mat[, keep_barcodes_in_snv, drop = FALSE]
   return(snv_mat_filtered)
@@ -24,7 +27,7 @@ filter_snv_data <- function(
 
 convert_snv_matrix <- function(
   snv_mat,
-  nCores = 2,
+  nCores = 1,
   chunkSize = 1000
 ) {
   # 1) Parse rownames (e.g., "chr1:184413:C:A") into chromosome, position, REF, ALT
@@ -241,13 +244,21 @@ FilterCellMutation <- function(snv_mat, cell_barcodes, somatic_variants, output_
 # --------------------------------------
 # Usage
 # --------------------------------------
+snv_matrix <- paste0(output_directory, sample_id, '.SNV_mat.RDS')
+if (!file.exists(snv_matrix)) {
+  stop(paste("SNV Matrix file not found:", snv_matrix))
+}
+if (!file.exists(cell_barcodes)) {
+  stop(paste("Cell barcode file not found:", cell_barcodes))
+}
+
 snv_matrix_filtered <- filter_snv_data(
   snv_mat = snv_matrix,			# SNV matrix
   cell_barcodes = cell_barcodes		# Cell barcodes
   )
 result <- convert_snv_matrix(
   snv_mat = snv_matrix_filtered,
-  nCores = 4,
+  nCores = ncores,
   chunkSize = 1000
   )
 PlotCellMutationDist(
@@ -260,8 +271,8 @@ output <- CheckFilterCutoffs(
   X = result$X,
   N = result$N,
   Z = result$Z,
-  cut.off.mut = 5,
-  cut.off.cell = 1
+  cut.off.mut = 2,			# cells_per_snv
+  cut.off.cell = 1			# snvs_per_cell
   )
 FilterCellMutation(
   snv_mat = snv_matrix_filtered,
