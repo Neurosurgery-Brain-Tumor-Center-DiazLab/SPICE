@@ -118,28 +118,37 @@ cat("Number of internal nodes:", Nnode(rooted_tree), "\n")
 branch_lengths <- rooted_tree$edge.length
 
 # Node-Label parsing
-# Suppose node labels look like "79.2/73", meaning (UFBoot=79.2, SH-aLRT=73).
+# Suppose node labels look like "79.2/73", meaning (SH-aLRT=79.2, UFBoot=73).
 parse_node_label <- function(lbl) {
-  if (lbl == "") {
-    return(c(UFBoot = NA, SHaLRT = NA))
-  }
-  parts <- strsplit(lbl, "/")[[1]]
-  if (length(parts) == 2) {
-    uf_val <- as.numeric(parts[1])
-    sh_val <- as.numeric(parts[2])
-  } else if (length(parts) == 1) {
-    uf_val <- 0
-    sh_val <- as.numeric(parts[1])
-  }
-  if(is.na(uf_val)) uf_val <- 0
-  if(is.na(sh_val)) sh_val <- 0
-  return(c(UFBoot = uf_val, SHaLRT = sh_val))
+    if (is.na(lbl) || lbl == "") {
+        return(c(
+            SHaLRT = NA_real_,
+            UFBoot = NA_real_
+        ))
+    }
+    parts <- strsplit(lbl, "/", fixed = TRUE)[[1]]
+    if (length(parts) == 2) {
+        # IQ-TREE with --alrt and -B reports:
+        # SH-aLRT / UFBoot
+        sh_val <- suppressWarnings(as.numeric(parts[1]))
+        uf_val <- suppressWarnings(as.numeric(parts[2]))
+    } else {
+        sh_val <- NA_real_
+        uf_val <- NA_real_
+    }
+    return(c(
+        SHaLRT = sh_val,
+        UFBoot = uf_val
+    ))
 }
 
 # We'll parse all node labels into numeric vectors
-all_supports <- as.data.frame(t(sapply(rooted_tree$node.label, parse_node_label)))
-uf_values <- all_supports$UFBoot  # UFBoot
-sh_values <- all_supports$SHaLRT  # SH-aLRT
+all_supports <- as.data.frame(
+    t(sapply(rooted_tree$node.label, parse_node_label))
+)
+
+sh_values <- all_supports$SHaLRT
+uf_values <- all_supports$UFBoot
 
 # Let's visualize these distributions and store them in a PDF
 ## 2A. Branch-length distribution
