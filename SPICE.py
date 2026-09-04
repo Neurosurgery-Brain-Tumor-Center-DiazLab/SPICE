@@ -258,6 +258,25 @@ def run_phylogeny(args: argparse.Namespace) -> None:
     cut_max    = args.branch_cut_max
     cut_step   = args.branch_cut_step
     tip_min    = args.min_tips
+    root_method = args.root_method
+    outgroup = args.outgroup
+
+    # Rooting configuration. If an outgroup is explicitly supplied,
+    # outgroup rooting takes precedence over --root_method.
+    if outgroup:
+        root_method = "outgroup"
+        outgroup_string = ",".join(outgroup)
+        print("[SPICE:phylogeny] Rooting method: outgroup")
+        print("[SPICE:phylogeny] Outgroup tip(s): " + ", ".join(outgroup))
+    else:
+        outgroup_string = "NA"
+        if root_method == "outgroup":
+            print(
+                "Error: --root_method outgroup requires --outgroup.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        print(f"[SPICE:phylogeny] Rooting method: {root_method}")
 
     # Convert optional floats to strings safe for R (NA if None)
     def _num_or_na(x):
@@ -275,6 +294,8 @@ def run_phylogeny(args: argparse.Namespace) -> None:
         _num_or_na(cut_max),         # args[6] BRANCH_CUT_MAX (double or NA)
         _num_or_na(cut_step),        # args[7] BRANCH_CUT_STEP (double or NA)
         str(int(tip_min)),           # args[8] TIP_THRESHOLD (integer)
+        root_method,                 # args[9] ROOT_METHOD
+        outgroup_string,             # args[10] OUTGROUP_STRING
     ]
 
     try:
@@ -423,6 +444,27 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Threshold for the minimum number of tips in the subclonal phylogenetic tree")
     p_phy.add_argument("--threads", type=int, default=1,
                        help="Number of threads to use")
+
+    p_phy.add_argument(
+            "--root_method",
+            choices=["midpoint", "outgroup", "none"],
+            default="midpoint",
+            help=(
+                "Tree rooting method. "
+                "If --outgroup is provided, outgroup rooting takes precedence. "
+                "'none' requires the input tree to already be rooted."
+                )
+            )
+    
+    p_phy.add_argument(
+        "--outgroup",
+        nargs="+",
+        default=None,
+        help=(
+            "One or more tip names to use as outgroup. "
+            "Providing this option automatically enables outgroup rooting."
+            )
+        )
 
     # Required positional arguments
     p_phy.add_argument("fasta_path", help="")

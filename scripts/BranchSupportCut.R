@@ -17,6 +17,22 @@ BRANCH_CUT_MAX <- as.double(args[6])
 BRANCH_CUT_STEP <- as.double(args[7])
 TIP_THRESHOLD <- as.integer(args[8])	# skip clusters with fewer than tips
 
+# Tree rooting options
+ROOT_METHOD <- if (length(args) >= 9) args[9] else "midpoint"
+OUTGROUP_STRING <- if (length(args) >= 10) args[10] else "NA"
+
+# Preserve historical SPICE behavior when no rooting option is supplied.
+if (is.na(ROOT_METHOD) || ROOT_METHOD == "") {
+  ROOT_METHOD <- "midpoint"
+}
+
+# Parse optional comma-separated outgroup tips passed from SPICE.py.
+if (is.na(OUTGROUP_STRING) || OUTGROUP_STRING == "" || OUTGROUP_STRING == "NA") {
+  OUTGROUPS <- character(0)
+} else {
+  OUTGROUPS <- trimws(strsplit(OUTGROUP_STRING, ",", fixed=TRUE)[[1]])
+}
+
 BRANCH_SEQ <- seq(BRANCH_CUT_MIN, BRANCH_CUT_MAX, by=BRANCH_CUT_STEP)	# range of branch-length cut thresholds
 BRANCH_LENGTH_THRESHOLD <- as.numeric(0.01)	# final chosen threshold
 
@@ -40,13 +56,91 @@ if (!dir.exists(clone_path)) {
 ########################################################
 ## 1. Read and Root the Tree
 ########################################################
-# Read the unrooted IQ-TREE
+# Read IQ-TREE output
 unrooted_tree <- read.tree(treefile)
 
-# Midpoint root to have a definite root
-# If you already have a suitable outgroup, use: root(unrooted_tree, outgroup="tipName", resolve.root=TRUE)
-rooted_tree <- midpoint(unrooted_tree)
-is.rooted(rooted_tree)
+if (is.null(unrooted_tree)) {
+  stop(paste("Failed to read phylogenetic tree:", treefile))
+}
+
+# Rooting priority:
+#   1. Explicit outgroup tip(s), when supplied
+#   2. User-selected ROOT_METHOD
+#   3. Midpoint rooting by default for backward compatibility
+if (length(OUTGROUPS) > 0) {
+
+  missing_outgroups <- setdiff(OUTGROUPS, unrooted_tree$tip.label)
+
+  if (length(missing_outgroups) > 0) {
+    stop(
+      paste(
+        "The following outgroup tip(s) were not found in the tree:",
+        paste(missing_outgroups, collapse=", ")
+      )
+    )
+  }
+
+  cat("Rooting method: outgroup\n")
+  cat("Outgroup tip(s):", paste(OUTGROUPS, collapse=", "), "\n")
+
+  rooted_tree <- root(
+    unrooted_tree,
+    outgroup=OUTGROUPS,
+    resolve.root=TRUE
+  )
+  ROOT_METHOD_USED <- "outgroup"
+
+} else if (ROOT_METHOD == "midpoint") {
+
+  cat("Rooting method: midpoint\n")
+  rooted_tree <- midpoint(unrooted_tree)
+  ROOT_METHOD_USED <- "midpoint"
+
+} else if (ROOT_METHOD == "none") {
+
+  cat("Rooting method: none\n")
+  rooted_tree <- unrooted_tree
+
+  if (!is.rooted(rooted_tree)) {
+    stop(
+      paste(
+        "ROOT_METHOD='none' was requested, but the input tree is not rooted.",
+        "Provide a rooted tree or use midpoint/outgroup rooting."
+      )
+    )
+  }
+  ROOT_METHOD_USED <- "none"
+
+} else if (ROOT_METHOD == "outgroup") {
+
+  stop("ROOT_METHOD='outgroup' requires at least one outgroup tip.")
+
+} else {
+
+  stop(paste("Unsupported rooting method:", ROOT_METHOD))
+}
+
+if (!is.rooted(rooted_tree)) {
+  stop(paste("Tree rooting failed using method:", ROOT_METHOD_USED))
+}
+
+cat("Tree successfully rooted using:", ROOT_METHOD_USED, "\n")
+
+# Save rooting metadata for reproducibility
+rooting_info <- data.frame(
+  sample_id=sample_id,
+  root_method=ROOT_METHOD_USED,
+  outgroup=if (length(OUTGROUPS) > 0) paste(OUTGROUPS, collapse=",") else NA_character_,
+  stringsAsFactors=FALSE
+)
+
+write.table(
+  rooting_info,
+  file=paste0(output_path, sample_id, ".rooting_info.tsv"),
+  sep="\t",
+  quote=FALSE,
+  row.names=FALSE
+)
 
 pdf(paste0(output_path, sample_id, ".rooted_tree.pdf"), width=10, height=8)
 p <- ggtree(rooted_tree, branch.length='none', layout='circular') +
