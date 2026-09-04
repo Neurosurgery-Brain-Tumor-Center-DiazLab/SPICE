@@ -178,7 +178,7 @@ optional arguments:
 
 ## <a name="citation"></a> Citation
 
-Yu, B., Okada M., Diaz, A. (2025)
+Yu, B. and Diaz, A. (2025)
 
 ## <a name="contact"></a> Contact Information
 For any questions or to report issues, please contact Bohyeon Yu at bohyeon.yu@ucsf.edu.

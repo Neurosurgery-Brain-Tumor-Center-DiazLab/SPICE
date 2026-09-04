@@ -271,8 +271,8 @@ output <- CheckFilterCutoffs(
   X = result$X,
   N = result$N,
   Z = result$Z,
-  cut.off.mut = 2,			# cells_per_snv
-  cut.off.cell = 1			# snvs_per_cell
+  cut.off.mut = cells_per_snv,		# cells_per_snv
+  cut.off.cell = snvs_per_cell		# snvs_per_cell
   )
 FilterCellMutation(
   snv_mat = snv_matrix_filtered,
