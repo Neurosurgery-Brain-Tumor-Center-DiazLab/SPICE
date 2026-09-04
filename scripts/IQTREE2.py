@@ -1,5 +1,6 @@
 import os
 import sys
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -19,20 +20,35 @@ def iqtree2_command(fasta_path: str, output_directory: str, sample_id: str,
     #fasta_file = os.path.join(output_directory, f"{sample_id}.SNV_mat.filter.fasta")
     fasta_file = fasta_path
 
-    # Resolve IQ-TREE2 binary from env var or fall back to the provided path
-    iqtree2_bin = os.environ.get(
-        "IQTREE2_BIN",
-        "/c4/home/bhyu0217/build/iqtree-2.3.6-Linux-intel/bin/iqtree2"
-    )
+    # Resolve IQ-TREE2 binary from env var or system PATH
+    iqtree2_bin = os.environ.get("IQTREE2_BIN")
+    
+    if iqtree2_bin:
+        if not (os.path.isfile(iqtree2_bin) and os.access(iqtree2_bin, os.X_OK)):
+            raise RuntimeError(
+                    f"IQTREE2_BIN is set but is not a valid executable: {iqtree2_bin}"
+            )
+        
+    else:
+        iqtree2_bin = shutil.which("iqtree2")
+        
+    if iqtree2_bin is None:
+        iqtree2_bin = shutil.which("iqtree")
+        
+    if iqtree2_bin is None:
+        raise RuntimeError(
+            "IQ-TREE2 executable was not found. "
+            "Install IQ-TREE2 and ensure 'iqtree2' is available in PATH, "
+            "or set the IQTREE2_BIN environment variable."
+        )
 
     # Threads: use user-provided integer or AUTO
-    #thread_token = str(threads) if (threads and threads > 0) else "AUTO"
+    thread_token = str(threads) if (threads is not None and threads > 0) else "AUTO"
 
     cmd = (
         f"{iqtree2_bin} "
         f"-s {fasta_file} "
-        #f"-T {thread_token} "
-        f"-T AUTO "
+        f"-T {thread_token} "
         f"-B {int(uf_bootstrap)} "
         f"--alrt {int(sh_alrt)} "
         f"-m {model}"

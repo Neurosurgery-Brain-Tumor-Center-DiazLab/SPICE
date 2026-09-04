@@ -212,7 +212,7 @@ def run_phylogeny(args: argparse.Namespace) -> None:
     model = args.model  
     uf_bootstrap = args.uf_bootstrap_replicates
     sh_alrt = args.sh_alrt_replicates
-    threads = "AUTO"
+    threads = args.threads
 
     cmd = iqtree2_command(
         fasta_path=fasta_path,
