@@ -21,6 +21,29 @@ TIP_THRESHOLD <- as.integer(args[8])	# skip clusters with fewer than tips
 ROOT_METHOD <- if (length(args) >= 9) args[9] else "midpoint"
 OUTGROUP_STRING <- if (length(args) >= 10) args[10] else "NA"
 
+# Final clone-cut threshold selection options
+CLONE_CUT_MODE <- if (length(args) >= 11) args[11] else "auto"
+MANUAL_CLONE_CUT_THRESHOLD <- if (length(args) >= 12) suppressWarnings(as.double(args[12])) else NA_real_
+MIN_TRUSTED_RATIO <- if (length(args) >= 13) as.double(args[13]) else 0.95
+MIN_PARTITION_STABILITY <- if (length(args) >= 14) as.double(args[14]) else 0.95
+STABILITY_WINDOW <- if (length(args) >= 15) as.integer(args[15]) else 3
+
+if (!(CLONE_CUT_MODE %in% c("auto", "manual"))) {
+  stop("CLONE_CUT_MODE must be either 'auto' or 'manual'.")
+}
+if (CLONE_CUT_MODE == "manual" && is.na(MANUAL_CLONE_CUT_THRESHOLD)) {
+  stop("Manual clone-cut mode requires a numeric clone-cut threshold.")
+}
+if (MIN_TRUSTED_RATIO < 0 || MIN_TRUSTED_RATIO > 1) {
+  stop("MIN_TRUSTED_RATIO must be between 0 and 1.")
+}
+if (MIN_PARTITION_STABILITY < 0 || MIN_PARTITION_STABILITY > 1) {
+  stop("MIN_PARTITION_STABILITY must be between 0 and 1.")
+}
+if (is.na(STABILITY_WINDOW) || STABILITY_WINDOW < 2) {
+  stop("STABILITY_WINDOW must be >= 2.")
+}
+
 # Preserve historical SPICE behavior when no rooting option is supplied.
 if (is.na(ROOT_METHOD) || ROOT_METHOD == "") {
   ROOT_METHOD <- "midpoint"
@@ -34,7 +57,6 @@ if (is.na(OUTGROUP_STRING) || OUTGROUP_STRING == "" || OUTGROUP_STRING == "NA") 
 }
 
 BRANCH_SEQ <- seq(BRANCH_CUT_MIN, BRANCH_CUT_MAX, by=BRANCH_CUT_STEP)	# range of branch-length cut thresholds
-BRANCH_LENGTH_THRESHOLD <- as.numeric(0.01)	# final chosen threshold
 
 treefile <- paste0(output_directory, sample_id, ".fasta.treefile")
 if (!file.exists(treefile)) {
@@ -436,120 +458,357 @@ cut_tree_wrapper <- function(tree, branchLengthThreshold,
 }
 
 ########################################################
-## 4. Iterating Over Various Branch-Length Thresholds
+## 4. Iterate Over Branch-Length Thresholds
+##    and quantify partition stability
 ########################################################
-# We'll store results in a data.frame
-results_list <- list()
 
-for (th in BRANCH_SEQ) {
+cluster_assignment_vector <- function(tree, clusters) {
+  assignment <- rep(NA_integer_, Ntip(tree))
+  names(assignment) <- tree$tip.label
+
+  for (i in seq_along(clusters)) {
+    assignment[clusters[[i]]$tips] <- i
+  }
+
+  if (any(is.na(assignment))) {
+    stop("At least one tree tip was not assigned to a partition.")
+  }
+
+  assignment[tree$tip.label]
+}
+
+# Adjusted Rand Index implemented locally to avoid an additional dependency.
+adjusted_rand_index <- function(labels_a, labels_b) {
+  if (length(labels_a) != length(labels_b)) {
+    stop("ARI requires assignment vectors of identical length.")
+  }
+
+  n <- length(labels_a)
+  if (n < 2) {
+    return(1)
+  }
+
+  tab <- table(labels_a, labels_b)
+  choose2 <- function(x) x * (x - 1) / 2
+
+  sum_comb <- sum(choose2(tab))
+  sum_rows <- sum(choose2(rowSums(tab)))
+  sum_cols <- sum(choose2(colSums(tab)))
+  total_pairs <- choose2(n)
+
+  if (total_pairs == 0) {
+    return(1)
+  }
+
+  expected <- (sum_rows * sum_cols) / total_pairs
+  max_index <- 0.5 * (sum_rows + sum_cols)
+  denominator <- max_index - expected
+
+  if (abs(denominator) < .Machine$double.eps) {
+    return(ifelse(identical(as.integer(labels_a), as.integer(labels_b)), 1, 0))
+  }
+
+  (sum_comb - expected) / denominator
+}
+
+results_list <- list()
+assignment_list <- list()
+
+for (i in seq_along(BRANCH_SEQ)) {
+  th <- BRANCH_SEQ[i]
+
   cl_list <- cut_tree_wrapper(
     tree = rooted_tree,
     branchLengthThreshold = th,
     uf_thr = UF_SUPPORT_THRESHOLD,
     sh_thr = SH_SUPPORT_THRESHOLD
   )
-  # cl_list is a list of clusters, each is a list(tips=..., trusted=TRUE/FALSE, etc.)
 
   n_clusters <- length(cl_list)
+  n_trusted <- sum(sapply(cl_list, function(x) isTRUE(x$trusted)))
+  n_untrusted <- n_clusters - n_trusted
+  pass_ratio <- if (n_clusters > 0) n_trusted / n_clusters else 0
 
-  # Let's see how many are "trusted" vs "untrusted"
-  # We'll define a cluster as "trusted" if cluster$trusted == TRUE
-  # (which occurs if it was cut at a node that had good support).
-  n_trusted  <- sum(sapply(cl_list, function(x) x$trusted))
+  n_exportable <- sum(
+    sapply(
+      cl_list,
+      function(x) isTRUE(x$trusted) && length(x$tips) >= TIP_THRESHOLD
+    )
+  )
 
-  # Possibly we also want to see how many tips are in trusted vs untrusted clusters
-  # Here we just do cluster counts
-  results_list[[as.character(th)]] <- data.frame(
-    threshold  = th,
+  assignment_list[[i]] <- cluster_assignment_vector(rooted_tree, cl_list)
+
+  results_list[[i]] <- data.frame(
+    threshold = th,
     n_clusters = n_clusters,
-    n_trusted  = n_trusted,
-    pass_ratio = if (n_clusters > 0) n_trusted / n_clusters else 0
+    n_trusted = n_trusted,
+    n_untrusted = n_untrusted,
+    n_exportable = n_exportable,
+    pass_ratio = pass_ratio,
+    stringsAsFactors = FALSE
   )
 }
 
 res_df <- do.call(rbind, results_list)
-write.table(res_df, paste0(output_path, "branch_length_cut_analysis.tsv"), sep = "\t", quote = FALSE, row.names = FALSE)
 
-# 4A. Plot total vs trusted clusters
+# Compare adjacent thresholds using cell-level partition concordance.
+ari_prev <- rep(NA_real_, nrow(res_df))
+ari_next <- rep(NA_real_, nrow(res_df))
+
+if (nrow(res_df) > 1) {
+  for (i in seq_len(nrow(res_df) - 1)) {
+    ari_val <- adjusted_rand_index(
+      assignment_list[[i]],
+      assignment_list[[i + 1]]
+    )
+    ari_next[i] <- ari_val
+    ari_prev[i + 1] <- ari_val
+  }
+}
+
+res_df$ari_prev <- ari_prev
+res_df$ari_next <- ari_next
+res_df$partition_stability <- ifelse(
+  is.na(ari_prev),
+  ari_next,
+  ifelse(
+    is.na(ari_next),
+    ari_prev,
+    pmin(ari_prev, ari_next)
+  )
+)
+
+########################################################
+## 5. Select final clone-cut threshold
+########################################################
+
+# Automatic selection:
+#   1) trusted ratio >= predefined minimum
+#   2) adjacent partition ARI >= predefined minimum
+#   3) criteria persist across a consecutive stable window
+#   4) among stable solutions, prefer fewer subtrees
+#   5) if the same parsimonious solution persists, use the plateau center
+select_threshold_auto <- function(df,
+                                  min_trusted_ratio = 0.95,
+                                  min_stability = 0.95,
+                                  stability_window = 3) {
+
+  candidate <- (
+    df$pass_ratio >= min_trusted_ratio &
+    !is.na(df$partition_stability) &
+    df$partition_stability >= min_stability
+  )
+
+  run_info <- rle(candidate)
+  run_end <- cumsum(run_info$lengths)
+  run_start <- run_end - run_info$lengths + 1
+
+  stable_indices <- integer(0)
+
+  for (j in seq_along(run_info$values)) {
+    if (isTRUE(run_info$values[j]) &&
+        run_info$lengths[j] >= stability_window) {
+      stable_indices <- c(
+        stable_indices,
+        seq.int(run_start[j], run_end[j])
+      )
+    }
+  }
+
+  if (length(stable_indices) == 0) {
+    stop(
+      paste0(
+        "Automatic clone-cut selection failed: no stable threshold region ",
+        "contains at least ", stability_window,
+        " consecutive thresholds with trusted ratio >= ",
+        min_trusted_ratio,
+        " and partition stability >= ", min_stability,
+        ". Inspect branch_length_cut_analysis.tsv and use manual mode, ",
+        "or adjust the predefined automatic-selection criteria."
+      )
+    )
+  }
+
+  stable_df <- df[stable_indices, , drop = FALSE]
+
+  min_clusters <- min(stable_df$n_clusters)
+  parsimonious_idx <- stable_indices[
+    stable_df$n_clusters == min_clusters
+  ]
+
+  # Split parsimonious solutions into consecutive threshold plateaus.
+  group_id <- cumsum(c(1, diff(parsimonious_idx) != 1))
+  plateau_runs <- split(parsimonious_idx, group_id)
+
+  plateau_lengths <- vapply(plateau_runs, length, integer(1))
+  longest_length <- max(plateau_lengths)
+  longest_runs <- plateau_runs[plateau_lengths == longest_length]
+
+  # Resolve equally long plateaus by higher trusted ratio, then stability.
+  run_scores <- lapply(longest_runs, function(idx) {
+    c(
+      median_pass = median(df$pass_ratio[idx]),
+      median_stability = median(df$partition_stability[idx], na.rm = TRUE)
+    )
+  })
+  run_scores_df <- as.data.frame(do.call(rbind, run_scores))
+  best_order <- order(
+    -run_scores_df$median_pass,
+    -run_scores_df$median_stability
+  )
+  best_run <- longest_runs[[best_order[1]]]
+
+  plateau_center <- median(df$threshold[best_run])
+  selected_idx <- best_run[
+    which.min(abs(df$threshold[best_run] - plateau_center))
+  ]
+
+  list(
+    threshold = df$threshold[selected_idx],
+    selected_index = selected_idx,
+    stable_indices = stable_indices,
+    plateau_indices = best_run,
+    n_clusters = df$n_clusters[selected_idx]
+  )
+}
+
+res_df$eligible <- FALSE
+res_df$selected <- FALSE
+res_df$selection_plateau <- FALSE
+
+if (CLONE_CUT_MODE == "manual") {
+  final_threshold <- MANUAL_CLONE_CUT_THRESHOLD
+  selection_reason <- "user-specified manual threshold"
+
+  # Mark the nearest swept threshold for visualization only.
+  nearest_idx <- which.min(abs(res_df$threshold - final_threshold))
+  res_df$selected[nearest_idx] <- TRUE
+
+  cat("Clone-cut mode: manual\n")
+  cat("Chosen final threshold:", final_threshold, "\n")
+
+} else {
+  auto_selection <- select_threshold_auto(
+    res_df,
+    min_trusted_ratio = MIN_TRUSTED_RATIO,
+    min_stability = MIN_PARTITION_STABILITY,
+    stability_window = STABILITY_WINDOW
+  )
+
+  final_threshold <- auto_selection$threshold
+  res_df$eligible[auto_selection$stable_indices] <- TRUE
+  res_df$selection_plateau[auto_selection$plateau_indices] <- TRUE
+  res_df$selected[auto_selection$selected_index] <- TRUE
+
+  selection_reason <- paste0(
+    "automatic stable-parsimonious selection: trusted ratio >= ",
+    MIN_TRUSTED_RATIO,
+    ", partition stability >= ",
+    MIN_PARTITION_STABILITY,
+    ", stable window >= ",
+    STABILITY_WINDOW,
+    " thresholds; selected center of parsimonious plateau"
+  )
+
+  cat("Clone-cut mode: auto\n")
+  cat("Chosen final threshold:", final_threshold, "\n")
+  cat("Selected number of subtrees:", auto_selection$n_clusters, "\n")
+}
+
+# Save the complete sweep and the selection decision.
+write.table(
+  res_df,
+  paste0(output_path, "branch_length_cut_analysis.tsv"),
+  sep = "\t",
+  quote = FALSE,
+  row.names = FALSE
+)
+
+selection_info <- data.frame(
+  sample_id = sample_id,
+  mode = CLONE_CUT_MODE,
+  selected_threshold = final_threshold,
+  min_trusted_ratio = if (CLONE_CUT_MODE == "auto") MIN_TRUSTED_RATIO else NA_real_,
+  min_partition_stability = if (CLONE_CUT_MODE == "auto") MIN_PARTITION_STABILITY else NA_real_,
+  stability_window = if (CLONE_CUT_MODE == "auto") STABILITY_WINDOW else NA_integer_,
+  reason = selection_reason,
+  stringsAsFactors = FALSE
+)
+
+write.table(
+  selection_info,
+  paste0(output_path, sample_id, ".clone_cut_selection.tsv"),
+  sep = "\t",
+  quote = FALSE,
+  row.names = FALSE
+)
+
+# QC plots
 pdf(paste0(output_path, "branch_cut_analysis.pdf"), width=7, height=4)
+
 p1 <- ggplot(res_df, aes(x=threshold)) +
   geom_line(aes(y=n_clusters, color="Total Clusters")) +
   geom_line(aes(y=n_trusted, color="Trusted Clusters")) +
   geom_point(aes(y=n_clusters, color="Total Clusters")) +
   geom_point(aes(y=n_trusted, color="Trusted Clusters")) +
+  geom_vline(xintercept=final_threshold, linetype="dashed") +
   theme_classic() +
   labs(
-    x="Branch-Length Threshold",
-    y="Number of Clusters",
-    title="Clustering vs Branch-Length Threshold",
+    x="Root-to-clade distance threshold",
+    y="Number of clusters",
+    title="Clustering vs clone-cut threshold",
     color="Legend"
-  ) + 
-  scale_color_manual(values = c("Total Clusters" = "black",
-				"Trusted Clusters" = "#bc3282"))
-
+  ) +
+  scale_color_manual(values = c(
+    "Total Clusters" = "black",
+    "Trusted Clusters" = "#bc3282"
+  ))
 print(p1)
 
-# 4B. Plot ratio of trusted clusters
 p2 <- ggplot(res_df, aes(x=threshold, y=pass_ratio, color="Trusted Ratio")) +
   geom_line() +
   geom_point() +
+  geom_hline(yintercept=MIN_TRUSTED_RATIO, linetype="dotted") +
+  geom_vline(xintercept=final_threshold, linetype="dashed") +
   theme_classic() +
   labs(
-    x="Branch-Length Threshold",
+    x="Root-to-clade distance threshold",
     y="Trusted Cluster Ratio",
-    title="Ratio of Trusted Clusters by Threshold",
+    title="Trusted cluster ratio by threshold",
     color="Legend"
   ) +
   scale_color_manual(values = c("Trusted Ratio" = "#365f9d"))
-
 print(p2)
-dev.off()
 
+p3 <- ggplot(res_df, aes(x=threshold, y=partition_stability)) +
+  geom_line() +
+  geom_point() +
+  geom_hline(yintercept=MIN_PARTITION_STABILITY, linetype="dotted") +
+  geom_vline(xintercept=final_threshold, linetype="dashed") +
+  theme_classic() +
+  labs(
+    x="Root-to-clade distance threshold",
+    y="Adjusted Rand Index",
+    title="Partition stability across adjacent thresholds"
+  )
+print(p3)
+
+dev.off()
 cat("Plots saved to 'branch_cut_analysis.pdf'\n")
 
-########################################################
-## 5. Choose final threshold and get final clusters
-########################################################
-# - 'res_df' shows how the total clusters (n_clusters) and the trusted subset (n_trusted)
-#   vary as you increase the branch-length threshold.
-# - If the threshold is very low (0.0), you might end up with no cluster "cuts" or a single giant leftover cluster (which might be untrusted).
-# - If the threshold is very high, you might cut a ton of small clusters, or possibly none if no branch is that large.
-# - You can pick the threshold where the number of clusters is neither too large nor too small, and the "trusted ratio" is relatively high.
-#
-# Example: you might look for a threshold that yields a decent number of clusters (say 5-10) and a pass_ratio > 0.9.
-#
-# Once you decide a final threshold, you can re-run:
-#   final_clusters <- cut_tree_wrapper(rooted_tree, branchLengthThreshold=0.05, 95, 80)
-#   # Then examine final_clusters in detail.
-
-select_threshold <- function(df, min_pass = 0.95) {
-  # Filter rows that meet the minimum acceptable pass_ratio
-  valid_rows <- subset(df, pass_ratio >= min_pass)
-  
-  # If no rows satisfy the criterion, return NA with a warning
-  if(nrow(valid_rows) == 0) {
-    warning("No threshold meets the minimum acceptable pass_ratio.")
-    return(NA)
-  }
-  
-  # Select the highest threshold among the valid rows
-  optimal_threshold <- max(valid_rows$threshold)
-  return(optimal_threshold)
-}
-
-final_threshold <- BRANCH_LENGTH_THRESHOLD
-#final_threshold <- select_threshold(res_df, 0.8)
-
-# Let's say we pick a final threshold=0.05 (as an example).
-# We'll re-run the cutting and then plot each trusted cluster separately.
-cat("Chosen final threshold:", final_threshold, "\n")
-final_clusters <- cut_tree_wrapper(rooted_tree, final_threshold,
-                                   UF_SUPPORT_THRESHOLD,
-                                   SH_SUPPORT_THRESHOLD)
+final_clusters <- cut_tree_wrapper(
+  rooted_tree,
+  final_threshold,
+  UF_SUPPORT_THRESHOLD,
+  SH_SUPPORT_THRESHOLD
+)
 
 cat("Number of final clusters:", length(final_clusters), "\n")
-cat("Number of trusted clusters:",
-    sum(sapply(final_clusters, function(x) x$trusted)), "\n")
+cat(
+  "Number of trusted clusters:",
+  sum(sapply(final_clusters, function(x) isTRUE(x$trusted))),
+  "\n"
+)
 
 ########################################################
 ## 6. Visualization + NEXUS Export for ASE

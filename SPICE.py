@@ -240,7 +240,7 @@ def run_phylogeny(args: argparse.Namespace) -> None:
         subprocess.run(cmd, shell=True, check=True)
         print("[SPICE:phylogeny] IQ-TREE2 finished successfully.")
     except FileNotFoundError:
-        print("Error: IQ-TREE2 binary not found. Set IQTREE2_BIN or update the hard-coded path.", file=sys.stderr)
+        print("Error: IQ-TREE2 binary not found. Set IQTREE2_BIN or ensure iqtree2/iqtree is available on PATH.", file=sys.stderr)
         sys.exit(1)
     except subprocess.CalledProcessError as e:
         print(f"Error: IQ-TREE2 failed with exit code {e.returncode}", file=sys.stderr)
@@ -258,8 +258,40 @@ def run_phylogeny(args: argparse.Namespace) -> None:
     cut_max    = args.branch_cut_max
     cut_step   = args.branch_cut_step
     tip_min    = args.min_tips
+    clone_cut_mode = args.clone_cut_mode
+    clone_cut_threshold = args.clone_cut_threshold
+    min_trusted_ratio = args.min_trusted_ratio
+    min_partition_stability = args.min_partition_stability
+    stability_window = args.stability_window
     root_method = args.root_method
     outgroup = args.outgroup
+
+    # Validate clone-cut selection options.
+    if clone_cut_mode == "manual" and clone_cut_threshold is None:
+        print(
+            "Error: --clone_cut_mode manual requires --clone_cut_threshold.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if clone_cut_threshold is not None and clone_cut_threshold < 0:
+        print("Error: --clone_cut_threshold must be >= 0.", file=sys.stderr)
+        sys.exit(1)
+
+    if not 0 <= min_trusted_ratio <= 1:
+        print("Error: --min_trusted_ratio must be between 0 and 1.", file=sys.stderr)
+        sys.exit(1)
+
+    if not 0 <= min_partition_stability <= 1:
+        print(
+            "Error: --min_partition_stability must be between 0 and 1.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    if stability_window < 2:
+        print("Error: --stability_window must be >= 2.", file=sys.stderr)
+        sys.exit(1)
 
     # Rooting configuration. If an outgroup is explicitly supplied,
     # outgroup rooting takes precedence over --root_method.
@@ -296,6 +328,11 @@ def run_phylogeny(args: argparse.Namespace) -> None:
         str(int(tip_min)),           # args[8] TIP_THRESHOLD (integer)
         root_method,                 # args[9] ROOT_METHOD
         outgroup_string,             # args[10] OUTGROUP_STRING
+        clone_cut_mode,              # args[11] CLONE_CUT_MODE
+        _num_or_na(clone_cut_threshold),  # args[12] MANUAL_CLONE_CUT_THRESHOLD
+        str(min_trusted_ratio),       # args[13] MIN_TRUSTED_RATIO
+        str(min_partition_stability), # args[14] MIN_PARTITION_STABILITY
+        str(int(stability_window)),   # args[15] STABILITY_WINDOW
     ]
 
     try:
@@ -440,6 +477,40 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Maximum value for the branch-length cutting range")
     p_phy.add_argument("--branch_cut_step", type=float, default=0.01,
                        help="Step size for the branch-length cutting range")
+    p_phy.add_argument(
+        "--clone_cut_mode",
+        choices=["auto", "manual"],
+        default="auto",
+        help=(
+            "How to choose the final root-to-clade distance threshold. "
+            "'auto' selects a stable, trusted, parsimonious solution; "
+            "'manual' uses --clone_cut_threshold."
+        ),
+    )
+    p_phy.add_argument(
+        "--clone_cut_threshold",
+        type=float,
+        default=None,
+        help="Final clone-cut threshold when --clone_cut_mode manual is used",
+    )
+    p_phy.add_argument(
+        "--min_trusted_ratio",
+        type=float,
+        default=0.95,
+        help="Minimum trusted-cluster ratio required for automatic threshold selection",
+    )
+    p_phy.add_argument(
+        "--min_partition_stability",
+        type=float,
+        default=0.95,
+        help="Minimum adjacent-threshold Adjusted Rand Index required for automatic selection",
+    )
+    p_phy.add_argument(
+        "--stability_window",
+        type=int,
+        default=3,
+        help="Minimum number of consecutive eligible thresholds defining a stable region",
+    )
     p_phy.add_argument("--min_tips", type=int, default=50,
                        help="Threshold for the minimum number of tips in the subclonal phylogenetic tree")
     p_phy.add_argument("--threads", type=int, default=1,
