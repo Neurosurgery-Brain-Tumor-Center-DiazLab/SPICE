@@ -132,18 +132,149 @@ merge_snv_matrices <- function(snv_matrices, output_directory, sample_id) {
   common_cell_barcodes <- cell_barcodes[[1]]
   message(paste("All SNV matrices have", length(common_cell_barcodes), "consistent cell barcodes."))
 
-  # Merge all matrices by row (variants)
+  # ============================================================
+  # Merge SNV matrices
+  # ============================================================
+
   message("Merging all SNV matrices into a single matrix...")
-  merged_snv_mat <- do.call(rbind, snv_matrices)
 
-  # Remove duplicate rows if any (though variants are expected to be unique)
-  merged_snv_mat <- unique(merged_snv_mat)
+  merged_snv_mat <- do.call(
+    rbind,
+    snv_matrices
+  )
 
-  message(paste("Merged SNV matrix has", nrow(merged_snv_mat), "unique variants and", ncol(merged_snv_mat), "cells."))
+  message(
+    paste(
+      "Merged matrix contains",
+      nrow(merged_snv_mat),
+      "variant records before duplicate checking."
+    )
+  )
 
-  # Optionally, set rownames and colnames explicitly (if needed)
-  # rownames(merged_snv_mat) <- unique(rownames(merged_snv_mat))
-  # colnames(merged_snv_mat) <- common_cell_barcodes
+  # ============================================================
+  # Validate variant IDs
+  # ============================================================
+
+  variant_ids <- rownames(merged_snv_mat)
+
+  if (is.null(variant_ids)) {
+    stop("Variant IDs are missing from row names of the merged SNV matrix.")
+  }
+
+  if (any(is.na(variant_ids) | variant_ids == "")) {
+    stop("Missing or empty variant IDs were detected.")
+  }
+
+  # ============================================================
+  # Detect duplicated variant IDs
+  # ============================================================
+
+  duplicate_ids <- unique(
+    variant_ids[
+      duplicated(variant_ids) |
+        duplicated(variant_ids, fromLast = TRUE)
+    ]
+  )
+
+  message(
+    paste(
+      "Detected",
+      length(duplicate_ids),
+      "duplicated variant ID(s)."
+    )
+  )
+
+  # ============================================================
+  # Check genotype consistency for duplicated variant IDs
+  # ============================================================
+
+  if (length(duplicate_ids) > 0) {
+
+    for (variant_id in duplicate_ids) {
+
+      idx <- which(variant_ids == variant_id)
+
+      genotype_patterns <- apply(
+        merged_snv_mat[
+          idx,
+          ,
+          drop = FALSE
+        ],
+        1,
+        paste,
+        collapse = "|"
+      )
+
+      if (length(unique(genotype_patterns)) > 1) {
+        stop(
+          paste(
+            "Duplicated variant ID has inconsistent genotype calls:",
+            variant_id
+          )
+        )
+      }
+    }
+
+    # All duplicated records are genotype-identical, so keep one copy.
+    duplicated_variant_records <- duplicated(variant_ids)
+
+    message(
+      paste(
+        "Removing",
+        sum(duplicated_variant_records),
+        "redundant duplicated variant record(s)."
+      )
+    )
+
+    merged_snv_mat <- merged_snv_mat[
+      !duplicated_variant_records,
+      ,
+      drop = FALSE
+    ]
+  }
+
+  message(
+    paste(
+      "Number of variants after variant-ID deduplication:",
+      nrow(merged_snv_mat)
+    )
+  )
+
+  # ============================================================
+  # Audit identical genotype patterns
+  # ============================================================
+  # Different variants can legitimately share the same genotype pattern
+  # across cells. These variants must be retained because they represent
+  # distinct genomic events.
+
+  genotype_patterns <- apply(
+    merged_snv_mat,
+    1,
+    paste,
+    collapse = "|"
+  )
+
+  n_shared_patterns <- sum(
+    duplicated(genotype_patterns)
+  )
+
+  message(
+    paste(
+      "Variants sharing an identical genotype pattern:",
+      n_shared_patterns,
+      "(retained)."
+    )
+  )
+
+  message(
+    paste(
+      "Merged SNV matrix has",
+      nrow(merged_snv_mat),
+      "variants and",
+      ncol(merged_snv_mat),
+      "cells."
+    )
+  )
 
   # Save the merged matrix as RDS
   merged_rds_filename <- paste0(sample_id, ".SNV_mat.RDS")
