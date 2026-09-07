@@ -937,6 +937,30 @@ unique_labels <- unique(all_tips$color_group)
 sorted_labels <- unique_labels[order(unique_labels == "untrusted_or_small", as.numeric(gsub("[^0-9]", "", unique_labels)))]
 all_tips$color_group <- factor(all_tips$color_group, levels = sorted_labels)
 
+
+# Standardized clone-assignment table for direct use by downstream SPICE modules.
+# Only trusted, size-qualified clusters receive a clone_id. Other cells retain
+# their audit status in clone_status.
+clone_assignment <- data.frame(
+  cell_id = all_tips$tip,
+  clone_id = ifelse(all_tips$in_trusted_cluster, as.character(all_tips$cluster_reason), NA),
+  clone_status = as.character(all_tips$cluster_reason),
+  in_trusted_cluster = all_tips$in_trusted_cluster,
+  stringsAsFactors = FALSE
+)
+write.table(
+  clone_assignment,
+  file = file.path(clone_path, paste0(sample_id, ".clone_assignment.tsv")),
+  sep = "\t",
+  row.names = FALSE,
+  quote = FALSE
+)
+cat(
+  "Wrote standardized clone assignment table:",
+  file.path(clone_path, paste0(sample_id, ".clone_assignment.tsv")),
+  "\n"
+)
+
 c25 <- c(
   "yellow", "dodgerblue2", "green4", "#6A3D9A", "#FF7F00",
   "black", "gold1", "skyblue2", "#FB9A99", "palegreen2",

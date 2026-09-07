@@ -16,6 +16,10 @@ import subprocess
 from pathlib import Path
 from typing import Optional, Dict, Any
 import math
+import shutil
+
+PROJECT_DIR = Path(__file__).resolve().parent
+SCRIPTS_DIR = PROJECT_DIR / "scripts"
 
 from scripts.monopogen_filter import *
 from scripts.convert_matrix_to_fasta import *
@@ -137,7 +141,7 @@ def run_filter(args: argparse.Namespace) -> None:
 
     # ---------------- Step 7: Run R merging script --------------
     print("\nMerging results via R script (monopogen_merge.R)...")
-    cmd = ["Rscript", "scripts/monopogen_merge.R", input_directory, output_directory, str(sample_id)]
+    cmd = ["Rscript", str(SCRIPTS_DIR / "monopogen_merge.R"), input_directory, output_directory, str(sample_id)]
     try:
         subprocess.run(cmd, check=True)
         print("R merge script completed successfully.")
@@ -150,7 +154,7 @@ def run_filter(args: argparse.Namespace) -> None:
     # ---------------- Step 8: Mutation filter --------------
     print("\nRunning mutation filter R script (mutation_filter.R)...")
     cmd = [
-        "Rscript", "scripts/mutation_filter.R",
+        "Rscript", str(SCRIPTS_DIR / "mutation_filter.R"),
         output_directory, str(sample_id), cell_barcode,
         str(thresholds["min_alt_cells_per_snv"][0]),
         str(thresholds["min_snvs_per_cell"][0]),
@@ -315,7 +319,7 @@ def run_phylogeny(args: argparse.Namespace) -> None:
         return "NA" if x is None else str(x)
 
     rscript = "Rscript"
-    rprog   = "scripts/BranchSupportCut.R"
+    rprog   = str(SCRIPTS_DIR / "BranchSupportCut.R")
     cmd = [
         rscript, rprog,
         output_directory,            # args[1]
@@ -346,32 +350,162 @@ def run_phylogeny(args: argparse.Namespace) -> None:
         sys.exit(e.returncode)
 
 
-def run_ancestry(args: argparse.Namespace) -> None:
-    """
-    Ancestry step entrypoint.
+def _require_file(path: str, label: str) -> Path:
+    p = Path(path).expanduser().resolve()
+    if not p.is_file():
+        print(f"Error: {label} not found: {p}", file=sys.stderr)
+        sys.exit(1)
+    return p
 
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments for MCMC-based discrete multistate ancestry analysis.
-    """
+
+def _resolve_bayestraits_binary(explicit: Optional[str] = None) -> Optional[str]:
+    """Resolve BayesTraits from CLI, environment, or PATH."""
+    candidates = []
+    if explicit:
+        candidates.append(explicit)
+    env_bin = os.environ.get("BAYESTRAITS_BIN")
+    if env_bin:
+        candidates.append(env_bin)
+
+    for candidate in candidates:
+        expanded = str(Path(candidate).expanduser())
+        if os.path.isfile(expanded) and os.access(expanded, os.X_OK):
+            return str(Path(expanded).resolve())
+        found = shutil.which(candidate)
+        if found:
+            return found
+
+    for name in ("BayesTraitsV4", "BayesTraitsV4.1.3", "BayesTraits"):
+        found = shutil.which(name)
+        if found:
+            return found
+    return None
+
+
+def run_ancestry(args: argparse.Namespace) -> None:
+    """Run BayesTraits MCMC ancestral-state reconstruction for one lineage tree."""
     print("[SPICE:ancestry] Starting ancestry with arguments:")
     for k, v in vars(args).items():
         print(f"  - {k}: {v}")
 
+    tree = _require_file(args.tree, "Lineage tree")
+    states = _require_file(args.states, "Cell-state table")
+    output_directory = Path(args.output_directory).expanduser().resolve()
+    output_directory.mkdir(parents=True, exist_ok=True)
+
+    if args.mcmc_chains < 1:
+        print("Error: --mcmc_chains must be >= 1.", file=sys.stderr)
+        sys.exit(1)
+    if args.iterations <= args.burnin:
+        print("Error: --iterations must be greater than --burnin.", file=sys.stderr)
+        sys.exit(1)
+    if args.log_sample_period < 1:
+        print("Error: --log_sample_period must be >= 1.", file=sys.stderr)
+        sys.exit(1)
+    if not 0 <= args.min_ancestral_probability <= 1:
+        print("Error: --min_ancestral_probability must be between 0 and 1.", file=sys.stderr)
+        sys.exit(1)
+
+    bayestraits = _resolve_bayestraits_binary(args.bayestraits_bin)
+    if bayestraits is None:
+        print(
+            "Error: BayesTraits executable not found. Use --bayestraits_bin, set "
+            "BAYESTRAITS_BIN, or place BayesTraitsV4 on PATH.",
+            file=sys.stderr,
+        )
+        sys.exit(1)
+
+    rprog = SCRIPTS_DIR / "ancestry_core.R"
+    cmd = [
+        "Rscript", str(rprog),
+        str(tree), str(states), str(output_directory), args.prefix, bayestraits,
+        str(args.mcmc_chains), str(args.iterations), str(args.burnin),
+        str(args.log_sample_period), str(args.stepping_stones),
+        str(args.stone_iterations), str(args.effective_size_threshold),
+        str(args.psrf_threshold), str(args.min_ancestral_probability),
+        str(args.threads),
+    ]
+    if args.hyperprior:
+        cmd.append(args.hyperprior)
+
+    print("[SPICE:ancestry] Running ancestry_core.R ...")
+    try:
+        subprocess.run(cmd, check=True, cwd=str(PROJECT_DIR))
+    except FileNotFoundError:
+        print("Error: Rscript is not available on PATH.", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: ancestry analysis failed with exit code {e.returncode}.", file=sys.stderr)
+        sys.exit(e.returncode)
+
+    print(f"[SPICE:ancestry] Completed. Results: {output_directory}")
+
 
 def run_plasticity(args: argparse.Namespace) -> None:
-    """
-    Plasticity step entrypoint.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments including permutation replicates and test direction.
-    """
+    """Classify lineage transitions and optionally run a BayesTraits permutation test."""
     print("[SPICE:plasticity] Starting plasticity with arguments:")
     for k, v in vars(args).items():
         print(f"  - {k}: {v}")
+
+    tree = _require_file(args.tree, "Lineage tree")
+    states = _require_file(args.states, "Cell-state table")
+    ancestral_states = _require_file(args.ancestral_states, "Ancestral-state table")
+    state_order = _require_file(args.state_order, "State-order table")
+
+    output_directory = Path(args.output_directory).expanduser().resolve()
+    output_directory.mkdir(parents=True, exist_ok=True)
+
+    if args.perm_replicates < 0:
+        print("Error: --perm_replicates must be >= 0.", file=sys.stderr)
+        sys.exit(1)
+    if args.threads < 1:
+        print("Error: --threads must be >= 1.", file=sys.stderr)
+        sys.exit(1)
+    if args.perm_chains < 1:
+        print("Error: --perm_chains must be >= 1.", file=sys.stderr)
+        sys.exit(1)
+    if args.perm_iterations <= args.perm_burnin:
+        print("Error: --perm_iterations must be greater than --perm_burnin.", file=sys.stderr)
+        sys.exit(1)
+
+    bayestraits = "NA"
+    if args.perm_replicates > 0:
+        resolved = _resolve_bayestraits_binary(args.bayestraits_bin)
+        if resolved is None:
+            print(
+                "Error: permutation testing requires BayesTraits. Use --bayestraits_bin, "
+                "set BAYESTRAITS_BIN, or place BayesTraitsV4 on PATH.",
+                file=sys.stderr,
+            )
+            sys.exit(1)
+        bayestraits = resolved
+
+    rprog = SCRIPTS_DIR / "plasticity_core.R"
+    cmd = [
+        "Rscript", str(rprog),
+        str(tree), str(states), str(ancestral_states), str(state_order),
+        str(output_directory), args.prefix, bayestraits,
+        str(args.perm_replicates), args.sig_direction, str(args.threads),
+        str(args.seed), str(args.min_ancestral_probability),
+        str(args.perm_chains), str(args.perm_iterations), str(args.perm_burnin),
+        str(args.perm_sample_period), str(args.stepping_stones),
+        str(args.stone_iterations), str(args.effective_size_threshold),
+        str(args.psrf_threshold),
+    ]
+    if args.hyperprior:
+        cmd.append(args.hyperprior)
+
+    print("[SPICE:plasticity] Running plasticity_core.R ...")
+    try:
+        subprocess.run(cmd, check=True, cwd=str(PROJECT_DIR))
+    except FileNotFoundError:
+        print("Error: Rscript is not available on PATH.", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as e:
+        print(f"Error: plasticity analysis failed with exit code {e.returncode}.", file=sys.stderr)
+        sys.exit(e.returncode)
+
+    print(f"[SPICE:plasticity] Completed. Results: {output_directory}")
 
 
 # ------------------------------ Helper Functions ------------------------------
@@ -482,7 +616,7 @@ def build_parser() -> argparse.ArgumentParser:
         choices=["auto", "manual"],
         default="auto",
         help=(
-            "How to choose the final root-to-clade distance threshold. "
+            "How to choose the final incoming branch-length threshold. "
             "'auto' selects a stable, trusted, parsimonious solution; "
             "'manual' uses --clone_cut_threshold."
         ),
@@ -546,34 +680,81 @@ def build_parser() -> argparse.ArgumentParser:
     # ------------------------------ ancestry ----------------------------------
     p_anc = subparsers.add_parser(
         "ancestry",
-        help="Estimate ancestral states / ASE with MCMC and convergence diagnostics",
+        help="Infer ancestral cell states on a supplied lineage tree using BayesTraits MCMC",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p_anc.add_argument("--mcmc_chains", type=int, help="Number of MCMC chains to run")
-    p_anc.add_argument("--iterations", type=int, help="Total number of iterations for the MCMC")
-    p_anc.add_argument("--burnin", type=int, help="Number of initial iterations to discard as burn-in")
-    p_anc.add_argument("--stepping_stones", type=int, help="Number of stepping stones used for marginal likelihood estimation")
-    p_anc.add_argument("--log_sample_period", type=int, help="Sample period (in iterations) for log output")
-    p_anc.add_argument("--effective_size_threshold", type=float, help="The effective size threshold used to assess MCMC convergence")
-    p_anc.add_argument("--psrf_threshold", type=float, help="The Gelman diagnostic PSRF threshold for evaluating MCMC convergence")
-    # Required positional arguments
-    p_anc.add_argument("input_directory", help="")
-    p_anc.add_argument("prefix", help="")
-    p_anc.add_argument("cell_state", help="")
+    p_anc.add_argument("tree", help="Rooted lineage tree in Newick or NEXUS format")
+    p_anc.add_argument("states", help="TSV containing cell_id and state columns")
+    p_anc.add_argument("output_directory", help="Directory for ancestry outputs")
+    p_anc.add_argument("prefix", help="Identifier used to prefix ancestry output files")
+    p_anc.add_argument("--bayestraits_bin", default=None,
+                       help="Path/name of BayesTraits executable; otherwise BAYESTRAITS_BIN or PATH is used")
+    p_anc.add_argument("--mcmc_chains", type=int, default=3,
+                       help="Number of independent MCMC chains")
+    p_anc.add_argument("--iterations", type=int, default=1000000,
+                       help="MCMC iterations per chain")
+    p_anc.add_argument("--burnin", type=int, default=200000,
+                       help="Burn-in iterations per chain")
+    p_anc.add_argument("--log_sample_period", type=int, default=1000,
+                       help="MCMC sampling period")
+    p_anc.add_argument("--stepping_stones", type=int, default=10,
+                       help="Number of stepping stones; use 0 to disable")
+    p_anc.add_argument("--stone_iterations", type=int, default=1000,
+                       help="Iterations per stepping stone")
+    p_anc.add_argument("--effective_size_threshold", type=float, default=200,
+                       help="Minimum ESS used for convergence QC")
+    p_anc.add_argument("--psrf_threshold", type=float, default=1.1,
+                       help="Maximum Gelman-Rubin PSRF used for convergence QC")
+    p_anc.add_argument("--min_ancestral_probability", type=float, default=0.90,
+                       help="Minimum posterior probability required to call an internal-node state")
+    p_anc.add_argument("--hyperprior", type=str, default="exp 0 10",
+                       help="BayesTraits HyperPriorAll specification")
+    p_anc.add_argument("--threads", type=int, default=3,
+                       help="Maximum number of independent MCMC chains run in parallel")
     p_anc.set_defaults(func=run_ancestry)
 
     # ------------------------------ plasticity --------------------------------
     p_pl = subparsers.add_parser(
         "plasticity",
-        help="Quantify plasticity with permutation testing",
+        help="Classify state transitions, quantify dedifferentiation-based plasticity, and optionally permute tip states",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p_pl.add_argument("--perm_replicates", type=int, help="Number of permutation replicates to perform.")
-    p_pl.add_argument("--sig_direction", choices={"greater", "less", "two-sided"},
-                      help="Specifies the test direction for calculating statistical significance.")
-    # Required positional arguments
-    p_pl.add_argument("output_directory", help="")
-    p_pl.add_argument("sample_id", help="")
+    p_pl.add_argument("tree", help="Rooted lineage tree in Newick or NEXUS format")
+    p_pl.add_argument("states", help="TSV containing cell_id and state columns")
+    p_pl.add_argument("ancestral_states", help="Ancestral-state TSV produced by SPICE ancestry")
+    p_pl.add_argument("state_order", help="TSV containing state and order columns")
+    p_pl.add_argument("output_directory", help="Directory for plasticity outputs")
+    p_pl.add_argument("prefix", help="Identifier used to prefix plasticity output files")
+    p_pl.add_argument("--perm_replicates", type=int, default=1000,
+                      help="Number of tip-state permutation replicates; use 0 to skip permutation testing")
+    p_pl.add_argument("--sig_direction", choices=["greater", "less", "two-sided"], default="greater",
+                      help="Alternative hypothesis for empirical permutation significance")
+    p_pl.add_argument("--bayestraits_bin", default=None,
+                      help="Path/name of BayesTraits executable used for permutation ancestry runs")
+    p_pl.add_argument("--perm_chains", type=int, default=1,
+                      help="Number of BayesTraits chains per permutation replicate")
+    p_pl.add_argument("--perm_iterations", type=int, default=1000000,
+                      help="MCMC iterations per permutation chain")
+    p_pl.add_argument("--perm_burnin", type=int, default=200000,
+                      help="Burn-in iterations per permutation chain")
+    p_pl.add_argument("--perm_sample_period", type=int, default=1000,
+                      help="Sampling period for permutation MCMC chains")
+    p_pl.add_argument("--stepping_stones", type=int, default=0,
+                      help="Number of stepping stones for permutation runs; 0 disables stepping stones")
+    p_pl.add_argument("--stone_iterations", type=int, default=1000,
+                      help="Iterations per stepping stone when enabled")
+    p_pl.add_argument("--effective_size_threshold", type=float, default=200,
+                      help="Minimum ESS recorded for permutation ancestry QC")
+    p_pl.add_argument("--psrf_threshold", type=float, default=1.1,
+                      help="Maximum PSRF recorded when >1 chain is run per permutation")
+    p_pl.add_argument("--min_ancestral_probability", type=float, default=0.90,
+                      help="Minimum posterior probability required to use an inferred internal-node state")
+    p_pl.add_argument("--hyperprior", type=str, default="exp 0 10",
+                      help="BayesTraits HyperPriorAll specification")
+    p_pl.add_argument("--seed", type=int, default=12345,
+                      help="Seed controlling reproducible tip-state shuffling")
+    p_pl.add_argument("--threads", type=int, default=1,
+                      help="Maximum number of permutation replicates executed in parallel")
     p_pl.set_defaults(func=run_plasticity)
 
     return parser
