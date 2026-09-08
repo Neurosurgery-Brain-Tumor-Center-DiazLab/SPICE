@@ -40,8 +40,8 @@ Use Python **3.10 or later** (the IQ-TREE helper uses `int | None` annotations),
 | Python CLI | `pandas` | Imported by the matrix and filtering helpers for all subcommands |
 | `filter` | R: `dplyr`, `progress`, `parallel` | Merge chromosome matrices, select cells/variants, parse read counts |
 | `phylogeny` | IQ-TREE 2; R: `ape`, `phangorn`, `phytools`, `ggplot2`, `ggtree`, `ggsci` | Tree inference, rooting, clone cutting, tree visualization |
-| `ancestry` | BayesTraits; R: `ape`, `coda`, `btw`, `janitor` | MultiState MCMC, log parsing, ESS/PSRF, node posteriors |
-| `plasticity` | R: `ape`, `coda`, `btw`, `janitor`; BayesTraits for permutations | Edge classification and permutation ancestry |
+| `ancestry` | BayesTraits; R: `ape`, `coda`, `btw`, `janitor`, `posterior` | MultiState MCMC, log parsing, ESS/PSRF, node posteriors |
+| `plasticity` | R: `ape`, `coda`, `btw`, `janitor`, `posterior`; BayesTraits for permutations | Edge classification and permutation ancestry |
 | R runtime | `parallel`, `stats`, `utils`, `tools`, base graphics | Included with R; no separate installation |
 
 Install [Monopogen](https://github.com/KChen-lab/Monopogen) and complete its somatic calling and matrix preparation before the SNV route. SPICE reads these outputs directly. Follow Monopogen’s installation and reference-data instructions for that upstream analysis.
@@ -64,7 +64,7 @@ Run in R:
 ```r
 install.packages(c(
   "dplyr", "progress", "ape", "phangorn", "phytools", "ggplot2",
-  "ggsci", "coda", "janitor", "BiocManager", "remotes"
+  "ggsci", "coda", "janitor", "posterior", "BiocManager", "remotes"
 ))
 BiocManager::install("ggtree")
 remotes::install_github("rgriff23/btw")
@@ -93,7 +93,7 @@ python3 SPICE.py filter --help
 python3 SPICE.py phylogeny --help
 python3 SPICE.py ancestry --help
 python3 SPICE.py plasticity --help
-Rscript -e 'p <- c("dplyr","progress","ape","phangorn","phytools","ggplot2","ggtree","ggsci","coda","btw","janitor"); stopifnot(all(vapply(p, requireNamespace, logical(1), quietly=TRUE)))'
+Rscript -e 'p <- c("dplyr","progress","ape","phangorn","phytools","ggplot2","ggtree","ggsci","coda","btw","janitor","posterior"); stopifnot(all(vapply(p, requireNamespace, logical(1), quietly=TRUE)))'
 ```
 
 ## Input files
@@ -268,7 +268,7 @@ python3 SPICE.py phylogeny results/manual/sample.fasta results/manual/ sample \
 
 ## Ancestral state estimation
 
-Estimate ancestral cell states on each clone tree using independent BayesTraits MultiState MCMC chains. The inferred state at each internal node is the state with the highest posterior mean across parsed chains. Posterior quantiles and a confidence flag accompany the call. ESS and Gelman–Rubin PSRF provide separate convergence diagnostics; inspect `.mcmc_diagnostics.tsv` alongside the node posteriors. PSRF is calculated with at least two chains.
+Estimate ancestral cell states on each clone tree using independent BayesTraits MultiState MCMC chains. The inferred state at each internal node is the state with the highest posterior mean across parsed chains. Posterior quantiles and a confidence flag accompany the call. Convergence QC uses rank-normalized split/folded R-hat, bulk ESS, and tail ESS, while retaining coda ESS and Gelman–Rubin PSRF for comparison. The defaults require R-hat < 1.01 and both modern ESS values ≥ 400. MCSE of the mean is also reported. These diagnostics require at least two chains; the default is three.
 
 ### Usage
 
@@ -294,7 +294,7 @@ Required inputs are a rooted tree and its cell-state table. Run once per clone i
 | `output_directory` | Directory | `Required` | Directory for this stage’s outputs; use a trailing slash for filter and phylogeny. |
 | `prefix` | String | `Required` | Sample/lineage identifier used in output filenames. |
 | `--bayestraits_bin` | Executable path/name | `None (unset)` | BayesTraits executable; resolved from this option, BAYESTRAITS_BIN, then recognized names on PATH. |
-| `--mcmc_chains` | Integer ≥ 1 | `3` | Number of independent BayesTraits MCMC chains. |
+| `--mcmc_chains` | Integer ≥ 2 | `3` | Number of independent BayesTraits MCMC chains. |
 | `--iterations` | Integer > burnin | `1000000` | Total MCMC iterations per ancestry chain. |
 | `--burnin` | Integer ≥ 0, < iterations | `200000` | Burn-in iterations per ancestry chain. |
 | `--log_sample_period` | Integer ≥ 1 | `1000` | Sample every this many MCMC iterations. |
@@ -302,7 +302,13 @@ Required inputs are a rooted tree and its cell-state table. Run once per clone i
 | `--stone_iterations` | Integer ≥ 1 | `1000` | Iterations per stepping stone when enabled. |
 | `--effective_size_threshold` | Number | `200` | ESS ≥ this value sets ESS_pass in ancestry diagnostics; used in internal permutation diagnostics for plasticity. |
 | `--psrf_threshold` | Number | `1.1` | PSRF point estimate ≤ this value sets PSRF_pass with at least two chains; also used internally for permutations. |
-| `--min_ancestral_probability` | Number in [0, 1] | `0.9` | Minimum posterior mean probability for a confident internal-node state; plasticity also respects the input confident flag. |
+| `--min_ancestral_probability` | Number in [0, 1] | `0.9` | Minimum posterior mean probability for a confident internal-node state. Plasticity recalculates confidence at its requested cutoff while retaining convergence QC requirements. |
+| `--rhat_threshold` | Finite number > 1 | `1.01` | Modern R-hat must be strictly below this threshold. |
+| `--bulk_ess_threshold` | Finite number > 0 | `400` | Minimum pooled bulk ESS across chains. |
+| `--tail_ess_threshold` | Finite number > 0 | `400` | Minimum pooled tail ESS across chains. |
+| `--max_retries` | Integer ≥ 0 | `2` | Maximum fresh attempts after the initial run fails QC. |
+| `--retry_multiplier` | Finite number > 1 | `2` | Multiply iterations and burn-in at each retry; sample period stays fixed. |
+| `--mcmc_seed` | Integer 1–2147483646 | `12345` | Base BayesTraits random seed; distinct deterministic seeds are assigned to chains, retries, and permutation replicates. |
 | `--hyperprior` | Quoted string | `exp 0 10` | BayesTraits HyperPriorAll specification, e.g. "exp 0 10". |
 | `--threads` | Integer ≥ 1 | `3` | Maximum simultaneous MCMC chains, capped by mcmc_chains. |
 | `-h`, `--help` | Flag | Exit only when supplied | Display this stage’s usage and options, then exit. |
@@ -311,15 +317,21 @@ Required inputs are a rooted tree and its cell-state table. Run once per clone i
 
 | File/location | Content |
 | --- | --- |
-| `<prefix>.ancestral_states.tsv` | `node_id`, `node_number`, `inferred_state`, `inferred_state_code`, `posterior_probability`, `posterior_q025`, `posterior_q975`, `confident`, and per-state `posterior_*` means |
-| `<prefix>.mcmc_diagnostics.tsv` | `parameter`, `ESS`, `PSRF_point`, `PSRF_upper`, `ESS_pass`, `PSRF_pass` |
+| `<prefix>.ancestral_states.tsv` | `node_id`, `node_number`, `inferred_state`, `inferred_state_code`, `posterior_probability`, `posterior_q025`, `posterior_q975`, `confident`, `node_qc_pass`, `run_qc_pass`, `usable`, `tree_md5`, `states_md5`, and per-state `posterior_*` means |
+| `<prefix>.mcmc_diagnostics.tsv` | `parameter`, `ESS`, `PSRF_point`, `PSRF_upper`, `ESS_pass`, `PSRF_pass`, `Rhat`, `ESS_bulk`, `ESS_tail`, `MCSE_mean`, `diagnostic_status`, `qc_pass`, parameter scope/node, and draw counts |
 | `<prefix>.state_mapping.tsv` | State labels and BayesTraits state codes |
 | `<prefix>.bayestraits_traits.tsv` | Headerless cell/state-code input supplied to BayesTraits |
 | `<prefix>.ancestry_run_info.tsv` | Input paths, executable, MCMC settings, and confidence/QC thresholds |
-| `MCMC1/`, `MCMC2/`, … | Command files, AddNode definitions, BayesTraits logs, stdout, and stderr per chain |
+| `<prefix>.qc_attempts.tsv` | Attempt settings, seed base, status, failed-node count, and execution errors |
+| `<prefix>.qc_status.tsv` | Final QC decision and thresholds |
+| `<prefix>.attempts/attempt_01/MCMC1/`, … | Command files, AddNode definitions, BayesTraits logs, stdout, and stderr per chain |
 | `<prefix>_ASE.txt` | Additional export with `node`, `anc_state`, `anc_prob`, and `confident` |
 
-Pass `.ancestral_states.tsv` to plasticity. `posterior_probability` is the selected state’s posterior mean, with 2.5% and 97.5% quantiles of its sampled probabilities. The `confident` flag uses `min_ancestral_probability`; ESS/PSRF pass flags describe convergence separately.
+Pass `.ancestral_states.tsv` to plasticity. `posterior_probability` is the selected state’s posterior mean, with 2.5% and 97.5% quantiles of its sampled probabilities. The `confident` flag uses `min_ancestral_probability`; `usable` additionally requires model and node QC to pass. Model QC covers likelihood and rate parameters. Node QC covers all sampled state probabilities for that node. Constant or unavailable diagnostics do not pass.
+
+A QC failure triggers a fresh set of all chains, with longer iterations and burn-in, up to the retry budget. With defaults, attempts use 1, 2, and 4 million iterations per chain. Only the final attempt supplies downstream posteriors; samples from different attempts are not pooled. Model QC failure blocks downstream analysis. When model QC passes but some nodes still fail after retries, those nodes remain uncertain. Process or malformed-log errors stop immediately and retain their logs.
+
+Use a fresh output directory or prefix for every run. All attempts and command files are retained. Fixed `--mcmc_seed` values make chain seed assignment independent of `--threads`; use a different seed to assess Monte Carlo stability. The seed for attempt a, chain c is the base plus `(a−1) × chains + (c−1)`, wrapped to the supported positive integer range.
 
 ## Cellular plasticity
 
@@ -332,7 +344,7 @@ Classify each parent-to-child edge using `state_order.tsv`:
 | Lower | Dedifferentiation |
 | Endpoint state/order unavailable or below confidence criteria | Uncertain |
 
-Observed tips have probability 1. Internal endpoints must have `confident = TRUE` and meet the plasticity posterior-probability cutoff. Each informative edge has equal weight:
+Observed tips have probability 1. Internal endpoints must pass node QC and meet the plasticity posterior-probability cutoff. The cutoff is recalculated from stored probabilities, allowing 0.7, 0.8, and 0.9 sensitivity analyses from the same ancestry output. Model QC and matching tree/cell-state fingerprints are required. Each informative edge has equal weight:
 
 ```text
 cellular_plasticity (%) = 100 × dedifferentiation /
@@ -365,7 +377,7 @@ python3 SPICE.py plasticity \
   results/clone1/ clone1 --perm_replicates 1000 --threads 4 --seed 12345
 ```
 
-Each replicate shuffles tip states without replacement on the fixed tree, preserves their frequencies, re-estimates ancestry, and recalculates plasticity. `--threads` parallelizes replicates. `--seed` controls the tip-state shuffles. The empirical p-value is `(b + 1)/(n + 1)`, where `n` is the number of successful finite null scores. For `greater`, `b` counts null scores ≥ observed; `less` uses ≤ observed; `two-sided` compares absolute distances from the null median. The test output reports both requested and successful replicate counts.
+Each replicate shuffles tip states without replacement on the fixed tree, preserves their frequencies, re-estimates ancestry, and recalculates plasticity. `--threads` parallelizes replicates. `--seed` controls the tip-state shuffles. The empirical p-value is `(b + 1)/(n + 1)`, where `n` is the requested replicate count. A p-value is reported only when every requested replicate completes QC and yields a finite score; otherwise the test is marked `incomplete`, significance fields are `NA`, and the command exits unsuccessfully while preserving results. For `greater`, `b` counts null scores ≥ observed; `less` uses ≤ observed; `two-sided` compares absolute distances from the null median. The test output reports requested/successful replicate counts and `test_status`. Each replicate uses the same convergence and confidence rules as the observed analysis. Retries preserve the same shuffled labels. The BayesTraits seed base for replicate i is `mcmc_seed + (i−1) × perm_chains × (max_retries+1)`, wrapped to the positive supported range; within each replicate, attempt/chain offsets follow ancestry.
 
 ### Parameters
 
@@ -380,7 +392,7 @@ Each replicate shuffles tip states without replacement on the fixed tree, preser
 | `--perm_replicates` | Integer ≥ 0 | `1000` | Number of tip-state shuffles with ancestry re-estimation; 0 calculates observed plasticity only. |
 | `--sig_direction` | greater / less / two-sided | `greater` | Alternative hypothesis for empirical permutation significance |
 | `--bayestraits_bin` | Executable path/name | `None (unset)` | BayesTraits executable; resolved from this option, BAYESTRAITS_BIN, then recognized names on PATH. |
-| `--perm_chains` | Integer ≥ 1 | `1` | Number of MCMC chains per permutation, run sequentially within each replicate. |
+| `--perm_chains` | Integer ≥ 2 when permutations enabled | `3` | Number of MCMC chains per permutation, run sequentially within each replicate. |
 | `--perm_iterations` | Integer > perm_burnin | `1000000` | Total MCMC iterations per permutation chain. |
 | `--perm_burnin` | Integer ≥ 0, < perm_iterations | `200000` | Burn-in iterations per permutation chain. |
 | `--perm_sample_period` | Integer ≥ 1 | `1000` | Sampling interval for permutation MCMC. |
@@ -388,9 +400,15 @@ Each replicate shuffles tip states without replacement on the fixed tree, preser
 | `--stone_iterations` | Integer ≥ 1 | `1000` | Iterations per stepping stone when enabled. |
 | `--effective_size_threshold` | Number | `200` | ESS ≥ this value sets ESS_pass in ancestry diagnostics; used in internal permutation diagnostics for plasticity. |
 | `--psrf_threshold` | Number | `1.1` | PSRF point estimate ≤ this value sets PSRF_pass with at least two chains; also used internally for permutations. |
-| `--min_ancestral_probability` | Number in [0, 1] | `0.9` | Minimum posterior mean probability for a confident internal-node state; plasticity also respects the input confident flag. |
+| `--min_ancestral_probability` | Number in [0, 1] | `0.9` | Minimum posterior mean probability for a confident internal-node state. Plasticity recalculates confidence at its requested cutoff while retaining convergence QC requirements. |
+| `--rhat_threshold` | Finite number > 1 | `1.01` | Modern R-hat must be strictly below this threshold. |
+| `--bulk_ess_threshold` | Finite number > 0 | `400` | Minimum pooled bulk ESS across chains. |
+| `--tail_ess_threshold` | Finite number > 0 | `400` | Minimum pooled tail ESS across chains. |
+| `--max_retries` | Integer ≥ 0 | `2` | Maximum fresh attempts after the initial run fails QC. |
+| `--retry_multiplier` | Finite number > 1 | `2` | Multiply iterations and burn-in at each retry; sample period stays fixed. |
+| `--mcmc_seed` | Integer 1–2147483646 | `12345` | Base BayesTraits random seed; distinct deterministic seeds are assigned to chains, retries, and permutation replicates. |
 | `--hyperprior` | Quoted string | `exp 0 10` | BayesTraits HyperPriorAll specification, e.g. "exp 0 10". |
-| `--seed` | Integer | `12345` | Tip-state shuffling seed: replicate i uses seed + i. Applies to shuffling only. |
+| `--seed` | Nonnegative integer; seed + replicate count ≤ 2147483646 | `12345` | Tip-state shuffling seed: replicate i uses seed + i. Applies to shuffling only. |
 | `--threads` | Integer ≥ 1 | `1` | Maximum simultaneous permutation replicates, capped by perm_replicates. |
 | `-h`, `--help` | Flag | Exit only when supplied | Display this stage’s usage and options, then exit. |
 
@@ -406,7 +424,7 @@ Each replicate shuffles tip states without replacement on the fixed tree, preser
 | `<prefix>_ASE_Summary.txt` | Transition export with parent/child labels and states |
 | `<prefix>_cellular_plasticity.tsv` | Additional clone-summary export |
 
-With `--perm_replicates 0`, the permutation table contains headers only and significance fields are `NA`. Per-replicate MCMC files use temporary directories; the retained permutation results are in `.permutation_plasticity.tsv` and `.plasticity_test.tsv`.
+With `--perm_replicates 0`, the permutation table contains headers only and significance fields are `NA`. Per-replicate MCMC commands, logs, diagnostics, and attempts are retained under `<prefix>.permutations/perm_0001/`, etc. Use a fresh output directory or prefix for each plasticity run.
 
 ## External lineage example
 
@@ -432,7 +450,7 @@ The repository also includes standalone read-count and BayesTraits analysis scri
 | Scripts | Additional directly loaded packages |
 | --- | --- |
 | `modules/cell_read_counter.py` | Python: `pysam`, `tqdm` |
-| `scripts/BayesTraits.R`, `scripts/RunBayesTraits.R`, `scripts/AncestralStatesMCMC.R` | R: `posterior`, `tidybayes`, `tidytree`, `tidyverse`, `patchwork`, `dplyr`, `tidyr`, plus the `ape`, `coda`, `btw`, `janitor`, `ggtree`, and `ggplot2` packages listed above; `parallel` is included with R |
+| `scripts/BayesTraits.R`, `scripts/RunBayesTraits.R`, `scripts/AncestralStatesMCMC.R` | R: `posterior`, `tidybayes`, `tidytree`, `tidyverse`, `patchwork`, `dplyr`, `tidyr`, plus the `ape`, `coda`, `btw`, `janitor`, `posterior`, `ggtree`, and `ggplot2` packages listed above; `parallel` is included with R |
 
 `tidyverse` also supplies `readr` and its other component packages used in these workflows.
 

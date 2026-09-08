@@ -29,6 +29,14 @@ threads <- as.integer(args[15])
 hyperprior <- if (length(args) >= 16) args[16] else "exp 0 10"
 
 # Resolve the directory containing this script so it can source shared utilities.
+max_rhat <- if (length(args) >= 17) as.numeric(args[17]) else 1.01
+min_bulk_ess <- if (length(args) >= 18) as.numeric(args[18]) else 400
+min_tail_ess <- if (length(args) >= 19) as.numeric(args[19]) else 400
+max_retries <- if (length(args) >= 20) as.integer(args[20]) else 2
+retry_multiplier <- if (length(args) >= 21) as.numeric(args[21]) else 2
+
+mcmc_seed <- if (length(args) >= 22) as.numeric(args[22]) else 12345
+
 file_arg <- grep("^--file=", commandArgs(trailingOnly=FALSE), value=TRUE)
 if (length(file_arg) > 0) {
   script_path <- sub("^--file=", "", file_arg[1])
@@ -63,6 +71,9 @@ res <- spice_run_ancestry(
   min_probability=min_probability,
   threads=threads,
   hyperprior=hyperprior,
+      max_rhat=max_rhat, min_bulk_ess=min_bulk_ess, min_tail_ess=min_tail_ess,
+      max_retries=max_retries, retry_multiplier=retry_multiplier,
+      mcmc_seed=mcmc_seed,
   write_outputs=TRUE
 )
 

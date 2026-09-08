@@ -1,7 +1,14 @@
+# Stable positive seeds, independent of worker scheduling.
+spice_derive_seed <- function(base, offset=0) {
+  if (length(base)!=1 || !is.finite(base) || base < 1 || base > 2147483646 || base != floor(base))
+    stop("Invalid MCMC seed.")
+  as.integer(((as.double(base)-1+as.double(offset)) %% 2147483646)+1)
+}
+
 # SPICE ancestry utilities
 # Core BayesTraits orchestration and posterior ancestral-state parsing.
 
-required_pkgs <- c("ape", "coda", "btw", "janitor")
+required_pkgs <- c("ape", "coda", "btw", "janitor", "posterior")
 missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly=TRUE)]
 if (length(missing_pkgs) > 0) {
   stop(
@@ -126,12 +133,14 @@ spice_make_bt_commands <- function(
   sample_period,
   stepping_stones,
   stone_iterations,
-  hyperprior
+  hyperprior,
+  mcmc_seed=12345
 ) {
   addnodes <- spice_addnode_commands(tree, addnodes_file)
   cmd <- c(
     "1",  # MultiState
     "2",  # MCMC
+    paste("Seed", format(mcmc_seed, scientific=FALSE)),
     paste("Iterations", format(iterations, scientific=FALSE)),
     paste("Burnin", format(burnin, scientific=FALSE)),
     paste("HyperPriorAll", hyperprior)
@@ -163,7 +172,8 @@ spice_run_bt_chain <- function(
   sample_period,
   stepping_stones,
   stone_iterations,
-  hyperprior
+  hyperprior,
+  mcmc_seed=12345
 ) {
   chain_name <- sprintf("MCMC%d", chain_id)
   chain_dir <- file.path(output_dir, chain_name)
@@ -182,7 +192,7 @@ spice_run_bt_chain <- function(
     sample_period=sample_period,
     stepping_stones=stepping_stones,
     stone_iterations=stone_iterations,
-    hyperprior=hyperprior
+    hyperprior=hyperprior, mcmc_seed=mcmc_seed
   )
 
   status <- system2(
@@ -202,62 +212,78 @@ spice_run_bt_chain <- function(
   log_file
 }
 
-spice_clean_bt_results <- function(log_file) {
-  parsed <- btw::parse_log(log_file)
-  if (is.null(parsed$results) || nrow(parsed$results) == 0) {
-    stop(paste("No MCMC results found in", log_file))
+spice_clean_bt_results <- function(log_file, burnin=0, iterations=Inf, sample_period=NULL) {
+  lines <- readLines(log_file, warn=FALSE)
+  header <- grep("^Iteration\\t", lines)
+  if (length(header) != 1) stop("Expected exactly one MCMC header in ", log_file)
+  raw <- utils::read.table(log_file, skip=header-1L, header=TRUE, sep="\t",
+                           quote="", comment.char="", check.names=FALSE)
+  # BayesTraits may write a trailing empty column. Never discard a real parameter.
+  empty <- names(raw) == "" & vapply(raw, function(x) all(is.na(x)), logical(1))
+  raw <- raw[, !empty, drop=FALSE]
+  x <- janitor::clean_names(raw)
+  if (!"iteration" %in% names(x) || anyDuplicated(names(x))) stop("Invalid MCMC columns.")
+  if (!is.numeric(x$iteration) || any(!is.finite(x$iteration)) ||
+      any(diff(x$iteration) <= 0)) stop("Invalid or repeated MCMC iterations.")
+  x <- x[x$iteration > burnin & x$iteration <= iterations,,drop=FALSE]
+  if (nrow(x) < 4) stop("Too few post-burn-in samples for QC.")
+  if (!is.null(sample_period)) {
+    expected <- seq.int((floor(burnin / sample_period)+1)*sample_period,
+                        floor(iterations / sample_period)*sample_period, by=sample_period)
+    if (!identical(as.numeric(x$iteration), as.numeric(expected)))
+      stop("Incomplete MCMC sample grid in ", log_file)
   }
-  janitor::clean_names(as.data.frame(parsed$results, check.names=FALSE))
+  x
 }
 
-spice_parameter_columns <- function(df) {
-  exclude <- c("tree_no", "iteration")
-  setdiff(colnames(df), exclude)
-}
+spice_parameter_columns <- function(df) setdiff(colnames(df), c("tree_no", "iteration"))
 
-spice_mcmc_diagnostics <- function(chain_results, min_ess=200, max_psrf=1.1) {
-  parameter_sets <- lapply(chain_results, spice_parameter_columns)
-  common <- Reduce(intersect, parameter_sets)
-  if (length(common) == 0) stop("No common MCMC parameters were found across chains.")
-
-  chain_objs <- lapply(chain_results, function(x) {
-    mat <- as.matrix(x[, common, drop=FALSE])
-    storage.mode(mat) <- "numeric"
-    coda::mcmc(mat)
+spice_mcmc_diagnostics <- function(chain_results, min_ess=200, max_psrf=1.1,
+                                   max_rhat=1.01, min_bulk_ess=400, min_tail_ess=400) {
+  if (length(chain_results) < 2) stop("QC requires at least two independent chains.")
+  common <- spice_parameter_columns(chain_results[[1]])
+  if (!length(common)) stop("No MCMC parameters found.")
+  for (x in chain_results) {
+    if (!identical(spice_parameter_columns(x), common)) stop("Chain parameter columns differ.")
+    if (!identical(x$iteration, chain_results[[1]]$iteration)) stop("Chain sample grids differ.")
+    if (!all(vapply(x[,common,drop=FALSE], is.numeric, logical(1)))) stop("Non-numeric MCMC parameter.")
+    if (any(!is.finite(as.matrix(x[,common,drop=FALSE])))) stop("Non-finite MCMC sample.")
+  }
+  safe <- function(expr) tryCatch(suppressWarnings(as.numeric(expr)[1]), error=function(e) NA_real_)
+  rows <- lapply(common, function(nm) {
+    mat <- do.call(cbind, lapply(chain_results, function(x) x[[nm]]))
+    chains <- coda::mcmc.list(lapply(seq_len(ncol(mat)), function(i) coda::mcmc(mat[,i])))
+    ess <- safe(coda::effectiveSize(chains))
+    ps <- tryCatch(suppressWarnings(coda::gelman.diag(chains, autoburnin=FALSE,
+                            multivariate=FALSE)$psrf[1,]), error=function(e) c(NA_real_, NA_real_))
+    rh <- safe(posterior::rhat(mat))
+    bulk <- safe(posterior::ess_bulk(mat))
+    tail <- safe(posterior::ess_tail(mat))
+    mcse <- safe(posterior::mcse_mean(mat))
+    constant <- any(apply(mat, 2, function(x) length(unique(x)) == 1))
+    valid <- all(is.finite(c(rh,bulk,tail,mcse))) && !constant
+    pass <- valid && rh < max_rhat && bulk >= min_bulk_ess && tail >= min_tail_ess
+    is_node <- grepl("^x[0-9]+_p_", nm) || grepl("^root_p_", nm)
+    node <- if (grepl("^x[0-9]+_p_", nm)) sub("^x([0-9]+)_.*", "T\\1", nm) else
+      if (grepl("^root_p_", nm)) "T1" else NA_character_
+    data.frame(parameter=nm, ESS=ess, PSRF_point=ps[1], PSRF_upper=ps[2],
+      ESS_pass=is.finite(ess) && ess >= min_ess,
+      PSRF_pass=is.finite(ps[1]) && ps[1] <= max_psrf,
+      Rhat=rh, ESS_bulk=bulk, ESS_tail=tail, MCSE_mean=mcse,
+      diagnostic_status=if (constant) "constant_chain" else if (!valid) "unavailable" else
+        if (pass) "pass" else "fail",
+      qc_pass=pass, scope=if (is_node) "node" else "model", node_id=node,
+      draws_per_chain=nrow(mat), chains=ncol(mat), stringsAsFactors=FALSE)
   })
-  ml <- coda::mcmc.list(chain_objs)
-  ess <- coda::effectiveSize(ml)
+  do.call(rbind, rows)
+}
 
-  psrf_point <- rep(NA_real_, length(common))
-  psrf_upper <- rep(NA_real_, length(common))
-  names(psrf_point) <- common
-  names(psrf_upper) <- common
-
-  if (length(chain_objs) >= 2) {
-    gd <- tryCatch(
-      coda::gelman.diag(ml, autoburnin=FALSE, multivariate=FALSE)$psrf,
-      error=function(e) NULL
-    )
-    if (!is.null(gd)) {
-      psrf_point[rownames(gd)] <- gd[,1]
-      psrf_upper[rownames(gd)] <- gd[,2]
-    }
-  }
-
-  out <- data.frame(
-    parameter=common,
-    ESS=as.numeric(ess[common]),
-    PSRF_point=as.numeric(psrf_point[common]),
-    PSRF_upper=as.numeric(psrf_upper[common]),
-    stringsAsFactors=FALSE
-  )
-  out$ESS_pass <- !is.na(out$ESS) & out$ESS >= min_ess
-  out$PSRF_pass <- if (length(chain_objs) >= 2) {
-    !is.na(out$PSRF_point) & out$PSRF_point <= max_psrf
-  } else {
-    NA
-  }
-  out
+spice_state_fingerprint <- function(states) {
+  states <- states[order(states$cell_id),c("cell_id","state"),drop=FALSE]
+  path <- tempfile()
+  on.exit(unlink(path), add=TRUE)
+  utils::write.table(states,path,sep="\t",row.names=FALSE,quote=FALSE)
+  unname(tools::md5sum(path))
 }
 
 spice_parse_node_posteriors <- function(chain_results, state_map, min_probability=0.90) {
@@ -344,7 +370,7 @@ spice_write_run_info <- function(path, values) {
   utils::write.table(tab, path, sep="\t", row.names=FALSE, quote=FALSE)
 }
 
-spice_run_ancestry <- function(
+spice_run_ancestry_once <- function(
   tree_file,
   state_file=NULL,
   states_df=NULL,
@@ -362,7 +388,8 @@ spice_run_ancestry <- function(
   min_probability=0.90,
   threads=1,
   hyperprior="exp 0 10",
-  write_outputs=TRUE
+  write_outputs=TRUE,
+  max_rhat=1.01, min_bulk_ess=400, min_tail_ess=400, mcmc_seed=12345
 ) {
   dir.create(output_dir, recursive=TRUE, showWarnings=FALSE)
   tree <- spice_read_tree(tree_file)
@@ -385,7 +412,7 @@ spice_run_ancestry <- function(
     output_dir=output_dir, prefix=prefix, bayestraits_bin=bayestraits_bin,
     iterations=iterations, burnin=burnin, sample_period=sample_period,
     stepping_stones=stepping_stones, stone_iterations=stone_iterations,
-    hyperprior=hyperprior
+    hyperprior=hyperprior, mcmc_seed=spice_derive_seed(mcmc_seed, i-1)
   )
   log_files <- if (.Platform$OS.type != "windows" && ncores > 1) {
     parallel::mclapply(ids, runner, mc.cores=ncores)
@@ -393,11 +420,31 @@ spice_run_ancestry <- function(
     lapply(ids, runner)
   }
 
-  chain_results <- lapply(log_files, spice_clean_bt_results)
-  diagnostics <- spice_mcmc_diagnostics(chain_results, min_ess=min_ess, max_psrf=max_psrf)
+  if (any(vapply(log_files, inherits, logical(1), "try-error"))) stop("A BayesTraits chain failed; inspect chain logs.")
+  chain_results <- lapply(log_files, spice_clean_bt_results, burnin=burnin,
+                         iterations=iterations, sample_period=sample_period)
+  diagnostics <- spice_mcmc_diagnostics(chain_results, min_ess=min_ess, max_psrf=max_psrf,
+                                       max_rhat=max_rhat, min_bulk_ess=min_bulk_ess,
+                                       min_tail_ess=min_tail_ess)
   ancestry <- spice_parse_node_posteriors(
     chain_results, encoded$map, min_probability=min_probability
   )
+
+  expected_nodes <- paste0("T", seq_len(tree$Nnode))
+  if (!setequal(ancestry$node_id, expected_nodes)) stop("Missing or unexpected ancestral nodes.")
+  expected_columns <- as.vector(outer(seq_len(tree$Nnode), encoded$map$state_code,
+                                    function(n, s) paste0("x", n, "_p_", s)))
+  if (!all(expected_columns %in% diagnostics$parameter)) stop("Missing node/state probability columns.")
+  model_qc <- diagnostics$qc_pass[diagnostics$scope == "model"]
+  run_qc_pass <- length(model_qc) > 0 && all(model_qc)
+  ancestry$node_qc_pass <- vapply(ancestry$node_id, function(n) {
+    d <- diagnostics[!is.na(diagnostics$node_id) & diagnostics$node_id == n,,drop=FALSE]
+    nrow(d) > 0 && all(d$qc_pass)
+  }, logical(1))
+  ancestry$run_qc_pass <- run_qc_pass
+  ancestry$usable <- ancestry$run_qc_pass & ancestry$node_qc_pass & ancestry$confident
+  ancestry$tree_md5 <- unname(tools::md5sum(tree_file))
+  ancestry$states_md5 <- spice_state_fingerprint(states)
 
   if (write_outputs) {
     utils::write.table(
@@ -437,6 +484,7 @@ spice_run_ancestry <- function(
         min_ess=min_ess,
         max_psrf=max_psrf,
         min_ancestral_probability=min_probability,
+        mcmc_seed=mcmc_seed,
         hyperprior=hyperprior
       )
     )
@@ -445,10 +493,89 @@ spice_run_ancestry <- function(
   list(
     tree=tree,
     states=states,
+    run_qc_pass=run_qc_pass,
     state_map=encoded$map,
     ancestry=ancestry,
     diagnostics=diagnostics,
     log_files=unlist(log_files),
     trait_file=trait_file
   )
+}
+
+
+# Fresh attempts are retained independently. No selection or pooling of chains
+# across attempts, and no automatic retry for process/parser/input errors.
+spice_run_ancestry <- function(tree_file, state_file=NULL, states_df=NULL,
+  output_dir, prefix, bayestraits_bin, chains=3, iterations=1000000,
+  burnin=200000, sample_period=1000, stepping_stones=10, stone_iterations=1000,
+  min_ess=200, max_psrf=1.1, min_probability=0.90, threads=3,
+  hyperprior="exp 0 10", write_outputs=TRUE,
+  max_rhat=1.01, min_bulk_ess=400, min_tail_ess=400,
+  max_retries=2, retry_multiplier=2, mcmc_seed=12345) {
+  if (chains < 2) stop("Convergence QC requires at least two independent chains; default is three.")
+  if (iterations <= burnin || burnin < 0 || sample_period < 1 || threads < 1 ||
+      max_retries < 0 || retry_multiplier <= 1 || max_rhat <= 1 ||
+      min_bulk_ess <= 0 || min_tail_ess <= 0) stop("Invalid MCMC/QC settings.")
+  dir.create(output_dir, recursive=TRUE, showWarnings=FALSE)
+  output_dir <- normalizePath(output_dir, mustWork=TRUE)
+  attempt_root <- file.path(output_dir, paste0(prefix, ".attempts"))
+  if (dir.exists(attempt_root) || file.exists(file.path(output_dir,paste0(prefix,".ancestral_states.tsv"))))
+    stop("Existing ancestry run found. Use a fresh output directory/prefix to preserve prior results.")
+  dir.create(attempt_root)
+  history <- data.frame()
+  final <- NULL
+  for (attempt in seq_len(max_retries+1L)) {
+    mult <- retry_multiplier^(attempt-1L)
+    niter <- ceiling(iterations*mult)
+    nburn <- ceiling(burnin*mult)
+    if (!is.finite(niter) || niter > .Machine$integer.max) stop("Retry iteration limit exceeded.")
+    attempt_dir <- file.path(attempt_root, sprintf("attempt_%02d",attempt))
+    message("Ancestry attempt ",attempt,": ",chains," chains, ",niter," iterations, burnin ",nburn)
+    result <- tryCatch(spice_run_ancestry_once(tree_file=tree_file,
+      state_file=state_file, states_df=states_df, output_dir=attempt_dir,
+      prefix=prefix, bayestraits_bin=bayestraits_bin, chains=chains,
+      iterations=niter, burnin=nburn, sample_period=sample_period,
+      stepping_stones=stepping_stones, stone_iterations=stone_iterations,
+      min_ess=min_ess, max_psrf=max_psrf, min_probability=min_probability,
+      threads=threads, hyperprior=hyperprior, write_outputs=TRUE,
+      max_rhat=max_rhat, min_bulk_ess=min_bulk_ess, min_tail_ess=min_tail_ess,
+      mcmc_seed=spice_derive_seed(mcmc_seed,(attempt-1)*chains)),
+      error=function(e) e)
+    errored <- inherits(result,"error")
+    passed <- !errored && result$run_qc_pass && all(result$ancestry$node_qc_pass)
+    history <- rbind(history,data.frame(attempt=attempt,iterations=niter,burnin=nburn,
+      seed_base=spice_derive_seed(mcmc_seed,(attempt-1)*chains),
+      status=if (errored) "execution_error" else if (passed) "pass" else "qc_failed",
+      model_qc_pass=if (errored) FALSE else result$run_qc_pass,
+      failed_nodes=if (errored) NA_integer_ else sum(!result$ancestry$node_qc_pass),
+      reason=if (errored) conditionMessage(result) else "", stringsAsFactors=FALSE))
+    utils::write.table(history,file.path(output_dir,paste0(prefix,".qc_attempts.tsv")),
+                       sep="\t",row.names=FALSE,quote=FALSE)
+    if (errored) {
+      spice_write_run_info(file.path(output_dir,paste0(prefix,".qc_status.tsv")),
+                           c(status="execution_error",run_qc_pass=FALSE,reason=conditionMessage(result)))
+      stop(conditionMessage(result),call.=FALSE)
+    }
+    final <- result
+    if (passed) break
+  }
+  # Model failures block the entire lineage. Failed node diagnostics remain
+  # explicit and their incident edges are uncertain after the retry budget.
+  status <- if (!final$run_qc_pass) "failed" else if (all(final$ancestry$node_qc_pass)) "passed" else "passed_with_uncertain_nodes"
+  spice_write_run_info(file.path(output_dir,paste0(prefix,".qc_status.tsv")),
+    c(status=status,run_qc_pass=final$run_qc_pass,attempts=nrow(history),
+      failed_nodes=sum(!final$ancestry$node_qc_pass),chains=chains,
+      rhat_threshold=max_rhat,bulk_ess_threshold=min_bulk_ess,tail_ess_threshold=min_tail_ess,
+      max_retries=max_retries,retry_multiplier=retry_multiplier))
+  if (!final$run_qc_pass) stop("Ancestry model QC failed after ",nrow(history),
+                              " attempt(s); downstream blocked. See .qc_attempts.tsv and attempt logs.")
+  # Only the selected final attempt is exported. Attempt-level tables always
+  # carry run/node QC flags so they cannot bypass plasticity validation.
+  for (suffix in c(".ancestral_states.tsv",".mcmc_diagnostics.tsv",".state_mapping.tsv",
+                   ".bayestraits_traits.tsv",".ancestry_run_info.tsv","_ASE.txt")) {
+    if (!file.copy(file.path(attempt_dir,paste0(prefix,suffix)),
+                   file.path(output_dir,paste0(prefix,suffix)))) stop("Unable to publish ancestry output.")
+  }
+  final$attempts <- history
+  final
 }

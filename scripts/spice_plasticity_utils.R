@@ -23,7 +23,7 @@ spice_read_state_order <- function(path) {
   out
 }
 
-spice_read_ancestry <- function(path, min_probability=0.90) {
+spice_read_ancestry <- function(path, min_probability=0.90, tree_file=NULL, states=NULL) {
   x <- utils::read.table(
     path, header=TRUE, sep="\t", quote="", comment.char="",
     stringsAsFactors=FALSE, check.names=FALSE
@@ -37,22 +37,24 @@ spice_read_ancestry <- function(path, min_probability=0.90) {
       )
     )
   }
+  required_qc <- c("run_qc_pass", "node_qc_pass", "tree_md5", "states_md5")
+  if (!all(required_qc %in% names(x))) stop("Ancestry lacks QC/provenance; rerun SPICE ancestry with convergence QC.")
+  logical_flag <- function(z) tolower(as.character(z)) %in% c("true","t","1")
+  if (!nrow(x) || !all(logical_flag(x$run_qc_pass))) stop("Ancestry model QC failed; plasticity blocked.")
+  if (!is.null(tree_file) && !all(x$tree_md5 == unname(tools::md5sum(tree_file))))
+    stop("Ancestry tree fingerprint does not match supplied tree.")
+  if (!is.null(states) && !all(x$states_md5 == spice_state_fingerprint(states)))
+    stop("Ancestry cell-state fingerprint does not match supplied states.")
+  x$node_qc_pass <- logical_flag(x$node_qc_pass)
   x$node_id <- as.character(x$node_id)
   x$inferred_state <- as.character(x$inferred_state)
   x$posterior_probability <- as.numeric(x$posterior_probability)
   if (anyDuplicated(x$node_id)) stop("Ancestral-state file contains duplicated node_id values.")
-  if (!"confident" %in% colnames(x)) {
-    x$confident <- x$posterior_probability >= min_probability
-  } else {
-    # read.table may return logical, character, or integer representations.
-    raw <- x$confident
-    if (is.logical(raw)) {
-      x$confident <- raw
-    } else {
-      y <- tolower(as.character(raw))
-      x$confident <- y %in% c("true", "t", "1", "yes", "y")
-    }
-  }
+  if (any(!is.finite(x$posterior_probability) | x$posterior_probability < 0 |
+          x$posterior_probability > 1)) stop("Invalid ancestral posterior probability.")
+  # Recalculate confidence for this analysis; convergence QC remains mandatory.
+  x$confident <- x$posterior_probability >= min_probability & x$node_qc_pass
+  x$usable <- x$confident & logical_flag(x$run_qc_pass)
   x
 }
 
@@ -77,7 +79,10 @@ spice_build_transitions <- function(tree, states, ancestry, state_order, min_pro
   tip_state <- stats::setNames(as.character(states$state), as.character(states$cell_id))
   anc_state <- stats::setNames(as.character(ancestry$inferred_state), as.character(ancestry$node_id))
   anc_prob <- stats::setNames(as.numeric(ancestry$posterior_probability), as.character(ancestry$node_id))
-  anc_conf <- stats::setNames(as.logical(ancestry$confident), as.character(ancestry$node_id))
+  if (!all(c("run_qc_pass","node_qc_pass") %in% names(ancestry)) ||
+      !all(ancestry$run_qc_pass %in% TRUE)) stop("Ancestry QC missing or failed.")
+  anc_conf <- stats::setNames(as.numeric(ancestry$posterior_probability) >= min_probability & ancestry$node_qc_pass,
+                              as.character(ancestry$node_id))
 
   expected_nodes <- paste0("T", seq_len(tree$Nnode))
   missing_nodes <- setdiff(expected_nodes, names(anc_state))

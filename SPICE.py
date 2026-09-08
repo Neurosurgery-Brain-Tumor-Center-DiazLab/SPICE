@@ -382,6 +382,54 @@ def _resolve_bayestraits_binary(explicit: Optional[str] = None) -> Optional[str]
     return None
 
 
+def _add_qc_options(parser):
+    parser.add_argument("--mcmc_seed", type=int, default=12345,
+                        help="Base BayesTraits seed; distinct deterministic seeds per chain, retry and permutation")
+    parser.add_argument("--rhat_threshold", type=float, default=1.01,
+                        help="Modern rank-normalized R-hat must be strictly below this value")
+    parser.add_argument("--bulk_ess_threshold", type=float, default=400,
+                        help="Minimum bulk ESS for modern convergence QC")
+    parser.add_argument("--tail_ess_threshold", type=float, default=400,
+                        help="Minimum tail ESS for modern convergence QC")
+    parser.add_argument("--max_retries", type=int, default=2,
+                        help="Maximum fresh MCMC retries following QC failure; 0 disables retries")
+    parser.add_argument("--retry_multiplier", type=float, default=2,
+                        help="Multiply iterations and burn-in by this factor per retry")
+
+
+def _qc_arguments(args):
+    if not 1 <= args.mcmc_seed <= 2147483646:
+        raise ValueError("--mcmc_seed must be between 1 and 2147483646")
+    if args.command == "plasticity" and not 0 <= args.seed <= 2147483646 - args.perm_replicates:
+        raise ValueError("--seed plus permutation count must fit a nonnegative R integer")
+    if not args.prefix or Path(args.prefix).name != args.prefix or args.prefix in (".", ".."):
+        raise ValueError("prefix must be a filename component")
+    numeric = (args.rhat_threshold, args.bulk_ess_threshold, args.tail_ess_threshold,
+               args.retry_multiplier, args.effective_size_threshold, args.psrf_threshold,
+               args.min_ancestral_probability)
+    if not all(math.isfinite(x) for x in numeric):
+        raise ValueError("QC settings must be finite")
+    if (args.rhat_threshold <= 1 or args.bulk_ess_threshold <= 0 or
+        args.tail_ess_threshold <= 0 or args.max_retries < 0 or
+        args.retry_multiplier <= 1 or args.threads < 1 or
+        args.effective_size_threshold <= 0 or args.psrf_threshold <= 1 or
+        not 0 <= args.min_ancestral_probability <= 1):
+        raise ValueError("Invalid QC thresholds, retry limits, probability, or threads")
+    if args.stepping_stones < 0 or args.stone_iterations < 1 or not args.hyperprior.strip():
+        raise ValueError("Invalid stepping-stone settings or empty hyperprior")
+    if args.command == "ancestry":
+        chains, iterations, burnin, period = args.mcmc_chains, args.iterations, args.burnin, args.log_sample_period
+    else:
+        chains, iterations, burnin, period = args.perm_chains, args.perm_iterations, args.perm_burnin, args.perm_sample_period
+    if args.command == "ancestry" or args.perm_replicates > 0:
+        if chains < 2 or burnin < 0 or iterations <= burnin or period < 1:
+            raise ValueError("QC needs at least two chains, nonnegative burn-in, iterations > burn-in, and positive sample period")
+        if iterations // period - burnin // period < 4:
+            raise ValueError("At least four retained draws per chain are required")
+    return [str(args.rhat_threshold), str(args.bulk_ess_threshold),
+            str(args.tail_ess_threshold), str(args.max_retries), str(args.retry_multiplier), str(args.mcmc_seed)]
+
+
 def run_ancestry(args: argparse.Namespace) -> None:
     """Run BayesTraits MCMC ancestral-state reconstruction for one lineage tree."""
     print("[SPICE:ancestry] Starting ancestry with arguments:")
@@ -425,8 +473,8 @@ def run_ancestry(args: argparse.Namespace) -> None:
         str(args.psrf_threshold), str(args.min_ancestral_probability),
         str(args.threads),
     ]
-    if args.hyperprior:
-        cmd.append(args.hyperprior)
+    cmd.append(args.hyperprior)
+    cmd.extend(_qc_arguments(args))
 
     print("[SPICE:ancestry] Running ancestry_core.R ...")
     try:
@@ -492,8 +540,8 @@ def run_plasticity(args: argparse.Namespace) -> None:
         str(args.stone_iterations), str(args.effective_size_threshold),
         str(args.psrf_threshold),
     ]
-    if args.hyperprior:
-        cmd.append(args.hyperprior)
+    cmd.append(args.hyperprior)
+    cmd.extend(_qc_arguments(args))
 
     print("[SPICE:plasticity] Running plasticity_core.R ...")
     try:
@@ -711,6 +759,7 @@ def build_parser() -> argparse.ArgumentParser:
                        help="BayesTraits HyperPriorAll specification")
     p_anc.add_argument("--threads", type=int, default=3,
                        help="Maximum number of independent MCMC chains run in parallel")
+    _add_qc_options(p_anc)
     p_anc.set_defaults(func=run_ancestry)
 
     # ------------------------------ plasticity --------------------------------
@@ -731,7 +780,7 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Alternative hypothesis for empirical permutation significance")
     p_pl.add_argument("--bayestraits_bin", default=None,
                       help="Path/name of BayesTraits executable used for permutation ancestry runs")
-    p_pl.add_argument("--perm_chains", type=int, default=1,
+    p_pl.add_argument("--perm_chains", type=int, default=3,
                       help="Number of BayesTraits chains per permutation replicate")
     p_pl.add_argument("--perm_iterations", type=int, default=1000000,
                       help="MCMC iterations per permutation chain")
@@ -755,6 +804,7 @@ def build_parser() -> argparse.ArgumentParser:
                       help="Seed controlling reproducible tip-state shuffling")
     p_pl.add_argument("--threads", type=int, default=1,
                       help="Maximum number of permutation replicates executed in parallel")
+    _add_qc_options(p_pl)
     p_pl.set_defaults(func=run_plasticity)
 
     return parser
@@ -787,7 +837,10 @@ def main(argv: Optional[list[str]] = None) -> int:
         ensure_dir(Path(args.output_directory))
 
     # Dispatch to the selected subcommand
-    args.func(args)
+    try:
+        args.func(args)
+    except ValueError as exc:
+        parser.error(str(exc))
     return 0
 
 

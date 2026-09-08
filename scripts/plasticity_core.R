@@ -34,6 +34,14 @@ min_ess <- as.numeric(args[19])
 max_psrf <- as.numeric(args[20])
 hyperprior <- if (length(args) >= 21) args[21] else "exp 0 10"
 
+max_rhat <- if (length(args) >= 22) as.numeric(args[22]) else 1.01
+min_bulk_ess <- if (length(args) >= 23) as.numeric(args[23]) else 400
+min_tail_ess <- if (length(args) >= 24) as.numeric(args[24]) else 400
+max_retries <- if (length(args) >= 25) as.integer(args[25]) else 2
+retry_multiplier <- if (length(args) >= 26) as.numeric(args[26]) else 2
+
+mcmc_seed <- if (length(args) >= 27) as.numeric(args[27]) else 12345
+
 file_arg <- grep("^--file=", commandArgs(trailingOnly=FALSE), value=TRUE)
 if (length(file_arg) > 0) {
   script_path <- sub("^--file=", "", file_arg[1])
@@ -50,10 +58,13 @@ if (!file.exists(state_file)) stop(paste("State file not found:", state_file))
 if (!file.exists(ancestry_file)) stop(paste("Ancestral-state file not found:", ancestry_file))
 if (!file.exists(state_order_file)) stop(paste("State-order file not found:", state_order_file))
 dir.create(output_dir, recursive=TRUE, showWarnings=FALSE)
+existing <- c(".transitions.tsv", ".plasticity.tsv", ".plasticity_test.tsv", ".permutations")
+if (any(file.exists(file.path(output_dir,paste0(prefix,existing)))))
+  stop("Existing plasticity run found. Use a fresh output directory/prefix.")
 
 tree <- spice_read_tree(tree_file)
 states <- spice_validate_tree_states(tree, spice_read_states(state_file))
-ancestry <- spice_read_ancestry(ancestry_file, min_probability=min_probability)
+ancestry <- spice_read_ancestry(ancestry_file, min_probability=min_probability, tree_file=tree_file, states=states)
 state_order <- spice_read_state_order(state_order_file)
 
 observed_transitions <- spice_build_transitions(
@@ -109,9 +120,8 @@ if (perm_replicates > 0) {
     set.seed(seed + i)
     perm_states$state <- sample(perm_states$state, replace=FALSE)
 
-    tmp <- tempfile(pattern=sprintf("%s_perm_%04d_", prefix, i))
-    dir.create(tmp, recursive=TRUE)
-    on.exit(unlink(tmp, recursive=TRUE, force=TRUE), add=TRUE)
+    tmp <- file.path(output_dir, paste0(prefix,".permutations"), sprintf("perm_%04d",i))
+    dir.create(tmp, recursive=TRUE, showWarnings=FALSE)
 
     tryCatch({
       anc <- spice_run_ancestry(
@@ -131,6 +141,9 @@ if (perm_replicates > 0) {
         min_probability=min_probability,
         threads=1,
         hyperprior=hyperprior,
+      max_rhat=max_rhat, min_bulk_ess=min_bulk_ess, min_tail_ess=min_tail_ess,
+      max_retries=max_retries, retry_multiplier=retry_multiplier,
+      mcmc_seed=spice_derive_seed(mcmc_seed,(i-1)*perm_chains*(max_retries+1)),
         write_outputs=FALSE
       )
       tr <- spice_build_transitions(
@@ -170,15 +183,18 @@ utils::write.table(
   sep="\t", row.names=FALSE, quote=FALSE
 )
 
+test_valid <- perm_replicates > 0 && nrow(perm_results) == perm_replicates &&
+  all(perm_results$status == "ok" & is.finite(perm_results$plasticity))
 null <- perm_results$plasticity[perm_results$status == "ok" & is.finite(perm_results$plasticity)]
 obs <- observed_summary$cellular_plasticity
 test_summary <- data.frame(
+  test_status=if (perm_replicates == 0) "not_requested" else if (test_valid && is.finite(obs)) "pass" else "incomplete",
   observed_plasticity=obs,
   perm_mean=if (length(null)) mean(null) else NA_real_,
   perm_sd=if (length(null) > 1) stats::sd(null) else NA_real_,
   perm_median=if (length(null)) stats::median(null) else NA_real_,
-  empirical_p=if (length(null)) spice_empirical_p(null, obs, alternative) else NA_real_,
-  z_score=if (length(null) > 1 && stats::sd(null) > 0) (obs - mean(null))/stats::sd(null) else NA_real_,
+  empirical_p=if (test_valid) spice_empirical_p(null, obs, alternative) else NA_real_,
+  z_score=if (test_valid && length(null) > 1 && stats::sd(null) > 0) (obs - mean(null))/stats::sd(null) else NA_real_,
   n_permutations_requested=perm_replicates,
   n_permutations_successful=length(null),
   alternative=alternative,
@@ -201,6 +217,16 @@ spice_write_run_info(
     permutation_replicates=perm_replicates,
     alternative=alternative,
     seed=seed,
+    mcmc_seed=mcmc_seed,
+    threads=threads,
+    rhat_threshold=max_rhat,
+    bulk_ess_threshold=min_bulk_ess,
+    tail_ess_threshold=min_tail_ess,
+    max_retries=max_retries,
+    retry_multiplier=retry_multiplier,
+    hyperprior=hyperprior,
+    stepping_stones=stepping_stones,
+    stone_iterations=stone_iterations,
     permutation_chains=perm_chains,
     permutation_iterations=perm_iterations,
     permutation_burnin=perm_burnin,
@@ -216,3 +242,5 @@ if (perm_replicates > 0) {
   cat("Successful permutations:", length(null), "/", perm_replicates, "\n")
   cat("Empirical p-value:", test_summary$empirical_p, "\n")
 }
+
+if (perm_replicates > 0 && (!test_valid || !is.finite(obs))) stop("Permutation test incomplete; no valid p-value published. Inspect retained replicate logs.")
