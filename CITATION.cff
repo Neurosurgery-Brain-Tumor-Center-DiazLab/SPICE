@@ -1,0 +1,10 @@
+cff-version: 1.2.0
+message: "Please cite the SPICE software version and commit used in your analysis."
+type: software
+title: "SPICE: Single-cell Plasticity Inference and Clonal Evolution"
+authors:
+  - family-names: Yu
+    given-names: Bohyeon
+version: 0.2.0
+repository-code: "https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE"
+license: GPL-3.0-only

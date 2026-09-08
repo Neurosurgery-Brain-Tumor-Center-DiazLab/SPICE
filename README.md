@@ -40,8 +40,8 @@ Use Python **3.10 or later** (the IQ-TREE helper uses `int | None` annotations),
 | Python CLI | `pandas` | Imported by the matrix and filtering helpers for all subcommands |
 | `filter` | R: `dplyr`, `progress`, `parallel` | Merge chromosome matrices, select cells/variants, parse read counts |
 | `phylogeny` | IQ-TREE 2; R: `ape`, `phangorn`, `phytools`, `ggplot2`, `ggtree`, `ggsci` | Tree inference, rooting, clone cutting, tree visualization |
-| `ancestry` | BayesTraits; R: `ape`, `coda`, `btw`, `janitor`, `posterior` | MultiState MCMC, log parsing, ESS/PSRF, node posteriors |
-| `plasticity` | R: `ape`, `coda`, `btw`, `janitor`, `posterior`; BayesTraits for permutations | Edge classification and permutation ancestry |
+| `ancestry` | BayesTraits; R: `ape`, `coda`, `janitor`, `posterior` | MultiState MCMC, log parsing, ESS/PSRF, node posteriors |
+| `plasticity` | R: `ape`, `coda`, `janitor`, `posterior`; BayesTraits for permutations | Edge classification and permutation ancestry |
 | R runtime | `parallel`, `stats`, `utils`, `tools`, base graphics | Included with R; no separate installation |
 
 Install [Monopogen](https://github.com/KChen-lab/Monopogen) and complete its somatic calling and matrix preparation before the SNV route. SPICE reads these outputs directly. Follow Monopogen’s installation and reference-data instructions for that upstream analysis.
@@ -64,13 +64,12 @@ Run in R:
 ```r
 install.packages(c(
   "dplyr", "progress", "ape", "phangorn", "phytools", "ggplot2",
-  "ggsci", "coda", "janitor", "posterior", "BiocManager", "remotes"
+  "ggsci", "coda", "janitor", "posterior", "BiocManager"
 ))
 BiocManager::install("ggtree")
-remotes::install_github("rgriff23/btw")
 ```
 
-`BiocManager` and `remotes` are installation tools. `btw` supplies the BayesTraits log parser; install the BayesTraits executable separately. See the [btw package](https://github.com/rgriff23/btw) and [ggtree package](https://bioconductor.org/packages/ggtree/) for package-specific installation instructions.
+`BiocManager` installs Bioconductor packages. The main CLI uses its own BayesTraits log parser and does not require `btw`. Install the BayesTraits executable separately. See the [ggtree package](https://bioconductor.org/packages/ggtree/) for package-specific installation instructions.
 
 ### Install external executables
 
@@ -93,8 +92,26 @@ python3 SPICE.py filter --help
 python3 SPICE.py phylogeny --help
 python3 SPICE.py ancestry --help
 python3 SPICE.py plasticity --help
-Rscript -e 'p <- c("dplyr","progress","ape","phangorn","phytools","ggplot2","ggtree","ggsci","coda","btw","janitor","posterior"); stopifnot(all(vapply(p, requireNamespace, logical(1), quietly=TRUE)))'
+Rscript -e 'p <- c("dplyr","progress","ape","phangorn","phytools","ggplot2","ggtree","ggsci","coda","janitor","posterior"); stopifnot(all(vapply(p, requireNamespace, logical(1), quietly=TRUE)))'
 ```
+
+### Environment and version
+
+```bash
+conda env create -f environment.yml
+conda activate spice
+Rscript scripts/install_R_dependencies.R
+python SPICE.py --version
+```
+
+The `--version` flag prints the code version and exits. The observed server
+versions are recorded in [computing environment](docs/computing-environment.md).
+Every analysis writes `<prefix>.runtime.json` with the SPICE version, source
+hashes, git revision/status when available, Python/R package versions, executable
+paths/hashes, settings and completion status. A retained BayesTraits banner is
+included when available. Existing runtime records are preserved with timestamped
+filenames. Summaries write `<output-filename>.runtime.json` beside the output.
+See [CHANGELOG](CHANGELOG.md) for output-format changes and `CITATION.cff` for citation metadata.
 
 ## Input files
 
@@ -317,7 +334,7 @@ Required inputs are a rooted tree and its cell-state table. Run once per clone i
 
 | File/location | Content |
 | --- | --- |
-| `<prefix>.ancestral_states.tsv` | `node_id`, `node_number`, `inferred_state`, `inferred_state_code`, `posterior_probability`, `posterior_q025`, `posterior_q975`, `confident`, `node_qc_pass`, `run_qc_pass`, `usable`, `tree_md5`, `states_md5`, and per-state `posterior_*` means |
+| `<prefix>.ancestral_states.tsv` | `node_id`, `node_number`, `inferred_state`, `inferred_state_code`, `posterior_probability`, `posterior_q025`, `posterior_q975`, `confident`, `node_qc_pass`, `run_qc_pass`, `usable`, `tree_md5`, `states_md5`, `qc_policy`, `spice_version`, QC thresholds, hyperprior, and per-state `posterior_state_<code>` means |
 | `<prefix>.mcmc_diagnostics.tsv` | `parameter`, `ESS`, `PSRF_point`, `PSRF_upper`, `ESS_pass`, `PSRF_pass`, `Rhat`, `ESS_bulk`, `ESS_tail`, `MCSE_mean`, `diagnostic_status`, `qc_pass`, parameter scope/node, and draw counts |
 | `<prefix>.state_mapping.tsv` | State labels and BayesTraits state codes |
 | `<prefix>.bayestraits_traits.tsv` | Headerless cell/state-code input supplied to BayesTraits |
@@ -327,7 +344,7 @@ Required inputs are a rooted tree and its cell-state table. Run once per clone i
 | `<prefix>.attempts/attempt_01/MCMC1/`, … | Command files, AddNode definitions, BayesTraits logs, stdout, and stderr per chain |
 | `<prefix>_ASE.txt` | Additional export with `node`, `anc_state`, `anc_prob`, and `confident` |
 
-Pass `.ancestral_states.tsv` to plasticity. `posterior_probability` is the selected state’s posterior mean, with 2.5% and 97.5% quantiles of its sampled probabilities. The `confident` flag uses `min_ancestral_probability`; `usable` additionally requires model and node QC to pass. Model QC covers likelihood and rate parameters. Node QC covers all sampled state probabilities for that node. State probabilities that have exactly the same finite value in [0,1] across all retained draws of every chain are marked `constant_consistent` and are eligible for use when model QC and the remaining node probabilities pass. Their R-hat/ESS diagnostics remain unavailable; this exception does not establish convergence or biological certainty. Different chain constants, partially constant chains, and constant model parameters do not qualify. Other unavailable diagnostics remain failures. `constant_probability_terms` and `node_qc_status` identify affected nodes in the ancestry output.
+Pass `.ancestral_states.tsv` to plasticity. Join `.state_mapping.tsv` to map the unique posterior state-code columns to original labels. The input requires the current `qc_policy`; before permutations, modern QC thresholds and the hyperprior must match the observed ancestry. A different posterior cutoff is supported and recalculated. Results created before policy metadata was introduced must be regenerated. `posterior_probability` is the selected state’s posterior mean, with 2.5% and 97.5% quantiles of its sampled probabilities. The `confident` flag uses `min_ancestral_probability`; `usable` additionally requires model and node QC to pass. Model QC covers likelihood and rate parameters. Node QC covers all sampled state probabilities for that node. State probabilities that have exactly the same finite value in [0,1] across all retained draws of every chain are marked `constant_consistent` and are eligible for use when model QC and the remaining node probabilities pass. Their R-hat/ESS diagnostics remain unavailable; this exception does not establish convergence or biological certainty. Different chain constants, partially constant chains, and constant model parameters do not qualify. Other unavailable diagnostics remain failures. `constant_probability_terms` and `node_qc_status` identify affected nodes in the ancestry output.
 
 A QC failure triggers a fresh set of all chains, with longer iterations and burn-in, up to the retry budget. With defaults, attempts use 1, 2, and 4 million iterations per chain. Only the final attempt supplies downstream posteriors; samples from different attempts are not pooled. Model QC failure blocks downstream analysis. When model QC passes but some nodes still fail after retries, those nodes remain uncertain. Process or malformed-log errors stop immediately and retain their logs.
 
@@ -443,6 +460,37 @@ python3 SPICE.py plasticity \
 
 Repeat for each known clone/tree, retaining clone membership in `clone_assignment.tsv` and using a distinct results directory for each lineage.
 
+## Summarize clone tests
+
+Create a tab-separated manifest for the full family of clones to be tested:
+
+```text
+clone_id	plasticity_test
+Clone1	results/Clone1/Clone1.plasticity_test.tsv
+Clone2	results/Clone2/Clone2.plasticity_test.tsv
+```
+
+Paths are relative to the manifest. Supply one distinct result per clone and the
+same test alternative throughout the family.
+
+```bash
+python SPICE.py summarize clone_tests.tsv clone_summary.tsv --alpha 0.05
+```
+
+| Parameter | Type / accepted values | Default | Meaning |
+|---|---|---|---|
+| `manifest` | TSV path | Required | Clone IDs and result-file paths. |
+| `output` | New TSV path | Required | Combined result table; existing files are not overwritten. |
+| `--alpha` | Finite number strictly between 0 and 1 | `0.05` | Threshold for BH-adjusted p-values. |
+| `-h`, `--help` | Flag | Exit only when supplied | Display usage. |
+
+The output contains clone ID, result path/status, observed score, empirical p-value,
+alternative, BH `q_value`, `significant`, and `n_tests_planned`. Declare the family
+before selecting significant clones. Missing, failed and unrequested tests remain
+in the planned family, using p=1 internally for correction; their displayed p/q
+values are `NA` and they cannot be significant. An adjusted p-value concerns the
+specified permutation null and does not by itself establish biological plasticity.
+
 ## Additional analysis scripts
 
 The repository also includes standalone read-count and BayesTraits analysis scripts. Install their additional packages when using them:
@@ -450,7 +498,7 @@ The repository also includes standalone read-count and BayesTraits analysis scri
 | Scripts | Additional directly loaded packages |
 | --- | --- |
 | `modules/cell_read_counter.py` | Python: `pysam`, `tqdm` |
-| `scripts/BayesTraits.R`, `scripts/RunBayesTraits.R`, `scripts/AncestralStatesMCMC.R` | R: `posterior`, `tidybayes`, `tidytree`, `tidyverse`, `patchwork`, `dplyr`, `tidyr`, plus the `ape`, `coda`, `btw`, `janitor`, `posterior`, `ggtree`, and `ggplot2` packages listed above; `parallel` is included with R |
+| `scripts/BayesTraits.R`, `scripts/RunBayesTraits.R`, `scripts/AncestralStatesMCMC.R` | R: `posterior`, `tidybayes`, `tidytree`, `tidyverse`, `patchwork`, `dplyr`, `tidyr`, plus the `ape`, `coda`, `janitor`, `posterior`, `ggtree`, and `ggplot2` packages listed above; `parallel` is included with R |
 
 `tidyverse` also supplies `readr` and its other component packages used in these workflows.
 
@@ -471,9 +519,15 @@ python3 modules/cell_read_counter.py \
 
 The output `sample.cell_read_counts.tsv` contains `cell` and `count` columns, sorted by count.
 
+The legacy BayesTraits runner resolves `BAYESTRAITS_BIN` or a recognized executable
+on PATH. Its extra packages can be installed with `remotes::install_github("rgriff23/btw")`
+after installing `remotes`. Use the main `SPICE.py` commands for current QC and output formats.
+
 ## License and contact
 
 SPICE is distributed under the [GNU General Public License v3.0](LICENSE).
 
 - Repository and issues: [Diaz Lab SPICE](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE)
 - Contact: Bohyeon Yu, [bohyeon.yu@ucsf.edu](mailto:bohyeon.yu@ucsf.edu)
+
+Trees used by ancestry must provide finite, nonnegative lengths for every edge; zero lengths are retained as supplied. `state_order.tsv` requires finite numeric orders.

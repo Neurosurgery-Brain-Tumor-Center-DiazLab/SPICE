@@ -64,7 +64,11 @@ if (any(file.exists(file.path(output_dir,paste0(prefix,existing)))))
 
 tree <- spice_read_tree(tree_file)
 states <- spice_validate_tree_states(tree, spice_read_states(state_file))
-ancestry <- spice_read_ancestry(ancestry_file, min_probability=min_probability, tree_file=tree_file, states=states)
+expected_qc <- if (perm_replicates > 0) list(qc_rhat_threshold=max_rhat,
+  qc_bulk_ess_threshold=min_bulk_ess, qc_tail_ess_threshold=min_tail_ess,
+  mcmc_hyperprior=trimws(gsub("[[:space:]]+", " ", hyperprior))) else NULL
+ancestry <- spice_read_ancestry(ancestry_file, min_probability=min_probability,
+  tree_file=tree_file, states=states, expected_qc=expected_qc)
 state_order <- spice_read_state_order(state_order_file)
 
 observed_transitions <- spice_build_transitions(
@@ -209,6 +213,8 @@ utils::write.table(
 spice_write_run_info(
   file.path(output_dir, paste0(prefix, ".plasticity_run_info.tsv")),
   c(
+    spice_version=Sys.getenv("SPICE_VERSION", "unknown"),
+    qc_policy=SPICE_QC_POLICY,
     tree=normalizePath(tree_file, mustWork=FALSE),
     states=normalizePath(state_file, mustWork=FALSE),
     ancestral_states=normalizePath(ancestry_file, mustWork=FALSE),

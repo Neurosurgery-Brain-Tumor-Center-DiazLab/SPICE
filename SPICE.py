@@ -17,6 +17,9 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import math
 import shutil
+import shlex
+from scripts.runtime_info import VERSION, capture_runtime, save_runtime
+from scripts.summarize_clones import run_summary
 
 PROJECT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = PROJECT_DIR / "scripts"
@@ -229,7 +232,7 @@ def run_phylogeny(args: argparse.Namespace) -> None:
     )
    
     print("\n[SPICE:phylogeny] IQ-TREE2 command:")
-    print("  " + cmd)
+    print("  " + shlex.join(cmd))
 
     # Also persist a runnable script for reproducibility
     script_path = generate_script(cmd, output_directory, sample_id)
@@ -239,9 +242,7 @@ def run_phylogeny(args: argparse.Namespace) -> None:
     # Execute IQ-TREE2
     # -------------------------------------------------------------------------
     try:
-        # Use shell=True to allow the command string to be executed as-is.
-        # If you prefer list-form without shell, split properly and avoid shell=True.
-        subprocess.run(cmd, shell=True, check=True)
+        subprocess.run(cmd, check=True)
         print("[SPICE:phylogeny] IQ-TREE2 finished successfully.")
     except FileNotFoundError:
         print("Error: IQ-TREE2 binary not found. Set IQTREE2_BIN or ensure iqtree2/iqtree is available on PATH.", file=sys.stderr)
@@ -600,6 +601,7 @@ def build_parser() -> argparse.ArgumentParser:
         add_help=True,
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
+    parser.add_argument("--version", action="version", version=f"SPICE {VERSION}")
     subparsers = parser.add_subparsers(dest="command", metavar="")
 
     # ------------------------------- filter -----------------------------------
@@ -807,6 +809,12 @@ def build_parser() -> argparse.ArgumentParser:
     _add_qc_options(p_pl)
     p_pl.set_defaults(func=run_plasticity)
 
+    p_sum = subparsers.add_parser("summarize", help="Combine clone plasticity results and apply BH FDR")
+    p_sum.add_argument("manifest", help="TSV with clone_id and plasticity_test columns; paths relative to manifest")
+    p_sum.add_argument("output", help="New output TSV path")
+    p_sum.add_argument("--alpha", type=float, default=0.05, help="FDR cutoff for significant clones")
+    p_sum.set_defaults(func=run_summary)
+
     return parser
 
 
@@ -837,11 +845,21 @@ def main(argv: Optional[list[str]] = None) -> int:
         ensure_dir(Path(args.output_directory))
 
     # Dispatch to the selected subcommand
+    if hasattr(args, "prefix") and (not args.prefix or Path(args.prefix).name != args.prefix or args.prefix in (".","..") or any(c in args.prefix for c in "\n\r\t")):
+        parser.error("prefix must be a single filename component without tabs/newlines")
+    os.environ["SPICE_VERSION"] = VERSION
+    metadata = capture_runtime(args, PROJECT_DIR)
     try:
         args.func(args)
     except ValueError as exc:
+        save_runtime(metadata, args, PROJECT_DIR, success=False)
         parser.error(str(exc))
+    except BaseException:
+        save_runtime(metadata, args, PROJECT_DIR, success=False)
+        raise
+    save_runtime(metadata, args, PROJECT_DIR, success=True)
     return 0
+
 
 
 if __name__ == "__main__":

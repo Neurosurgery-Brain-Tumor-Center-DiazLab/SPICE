@@ -63,6 +63,7 @@ anc <- data.frame(node_id="T1",inferred_state="A",posterior_probability=.95,conf
 af <- tempfile()
 write.table(anc,af,sep="\t",row.names=FALSE,quote=FALSE)
 expect_error(spice_read_ancestry(af),"lacks QC")
+anc$qc_policy <- SPICE_QC_POLICY
 anc$run_qc_pass <- FALSE; anc$node_qc_pass <- TRUE
 anc$tree_md5 <- unname(tools::md5sum(tree_file));anc$states_md5 <- spice_state_fingerprint(states)
 write.table(anc,af,sep="\t",row.names=FALSE,quote=FALSE)
@@ -114,3 +115,25 @@ mixed[[3]]$x1_p_0 <- mixed[[3]]$x1_p_0+.5
 md <- spice_mcmc_diagnostics(mixed)
 stopifnot(!md$qc_pass[md$parameter=="x1_p_0"],md$qc_pass[md$parameter=="x1_p_1"])
 cat("PASS: consistent constant probabilities, disagreement, partial constants and strict model QC\n")
+
+# QC policy and observed/permutation settings must agree.
+anc$qc_policy <- "old-policy"
+write.table(anc,af,sep="\t",row.names=FALSE,quote=FALSE)
+expect_error(spice_read_ancestry(af),"policy")
+anc$qc_policy <- SPICE_QC_POLICY;anc$qc_rhat_threshold <- 1.01
+write.table(anc,af,sep="\t",row.names=FALSE,quote=FALSE)
+expect_error(spice_read_ancestry(af,expected_qc=list(qc_rhat_threshold=1.02)),"mismatch")
+stopifnot(nrow(spice_read_ancestry(af,expected_qc=list(qc_rhat_threshold=1.01)))==1)
+# Distinct states must not overwrite each other after name sanitization.
+collision <- list(data.frame(x1_p_0=c(.8,.6),x1_p_1=c(.2,.4)))
+post <- spice_parse_node_posteriors(collision,data.frame(state=c("A-B","A.B"),state_code=0:1))
+stopifnot(all(c("posterior_state_0","posterior_state_1") %in% names(post)),
+          abs(post$posterior_state_0-.7)<1e-12,abs(post$posterior_state_1-.3)<1e-12)
+writeLines("(a:-1,b:1);",tree_file)
+expect_error(spice_read_tree(tree_file),"nonnegative")
+writeLines("(a,b);",tree_file)
+expect_error(spice_read_tree(tree_file),"branch lengths")
+order_file <- tempfile()
+writeLines(c("state\torder","A\tInf","B\t1"),order_file)
+expect_error(spice_read_state_order(order_file),"non-finite")
+cat("PASS: input validation, unique posterior columns and QC policy compatibility\n")

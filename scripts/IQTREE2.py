@@ -2,11 +2,12 @@ import os
 import sys
 import shutil
 import subprocess
+import shlex
 from pathlib import Path
 
 def iqtree2_command(fasta_path: str, output_directory: str, sample_id: str,
                     model: str, uf_bootstrap: int, sh_alrt: int,
-                    threads: int | None) -> str:
+                    threads: int | None) -> list[str]:
     """
     Build an IQ-TREE2 command string from CLI arguments.
 
@@ -45,17 +46,11 @@ def iqtree2_command(fasta_path: str, output_directory: str, sample_id: str,
     # Threads: use user-provided integer or AUTO
     thread_token = str(threads) if (threads is not None and threads > 0) else "AUTO"
 
-    cmd = (
-        f"{iqtree2_bin} "
-        f"-s {fasta_file} "
-        f"-T {thread_token} "
-        f"-B {int(uf_bootstrap)} "
-        f"--alrt {int(sh_alrt)} "
-        f"-m {model}"
-    )
+    cmd = [iqtree2_bin, "-s", str(fasta_file), "-T", thread_token,
+           "-B", str(int(uf_bootstrap)), "--alrt", str(int(sh_alrt)), "-m", model]
     return cmd
 
-def generate_script(script_content: str, output_directory: str, sample_id: str) -> str:
+def generate_script(script_content: list[str], output_directory: str, sample_id: str) -> str:
     """
     Write a small shell script to disk and make it executable.
     """
@@ -63,6 +58,6 @@ def generate_script(script_content: str, output_directory: str, sample_id: str) 
     with open(script_path, "w") as fh:
         #fh.write("#!/usr/bin/env bash\nset -euo pipefail\n")
         fh.write("#!/usr/bin/env bash\n")
-        fh.write(script_content.strip() + "\n")
+        fh.write(shlex.join(script_content) + "\n")
     os.chmod(script_path, 0o755)
     return script_path

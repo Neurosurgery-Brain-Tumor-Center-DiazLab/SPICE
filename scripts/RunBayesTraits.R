@@ -23,10 +23,15 @@ run_bayestraits_mcmc <- function(treefile, traitfile, outputdir, outprefix, iter
   writeLines(cmd_lines, cmdfile)
 
   # 2) Run BayesTraits
-  BT <- "/c4/home/bhyu0217/build/BayesTraitsV4.1.3-Linux/BayesTraitsV4"
-  cmd <- paste(BT, treefile, traitfile, "<", cmdfile)
-  cat(cmd)
-  system(cmd)
+  BT <- Sys.getenv("BAYESTRAITS_BIN", "")
+  if (!nzchar(BT)) {
+    candidates <- Sys.which(c("BayesTraitsV4", "BayesTraitsV4.1.3", "BayesTraits"))
+    candidates <- candidates[nzchar(candidates)]
+    if (length(candidates)) BT <- unname(candidates[1])
+  }
+  if (!nzchar(BT) || file.access(BT,1)!=0) stop("Set BAYESTRAITS_BIN to an executable BayesTraits binary.")
+  status <- system2(BT, c(shQuote(treefile),shQuote(traitfile)), stdin=cmdfile)
+  if (status != 0) stop("BayesTraits failed with status ",status)
 }
 
 args <- commandArgs(trailingOnly = TRUE)

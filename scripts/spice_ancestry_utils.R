@@ -1,3 +1,4 @@
+SPICE_QC_POLICY <- "constant-probabilities-v1"
 # Stable positive seeds, independent of worker scheduling.
 spice_derive_seed <- function(base, offset=0) {
   if (length(base)!=1 || !is.finite(base) || base < 1 || base > 2147483646 || base != floor(base))
@@ -8,7 +9,7 @@ spice_derive_seed <- function(base, offset=0) {
 # SPICE ancestry utilities
 # Core BayesTraits orchestration and posterior ancestral-state parsing.
 
-required_pkgs <- c("ape", "coda", "btw", "janitor", "posterior")
+required_pkgs <- c("ape", "coda", "janitor", "posterior")
 missing_pkgs <- required_pkgs[!vapply(required_pkgs, requireNamespace, logical(1), quietly=TRUE)]
 if (length(missing_pkgs) > 0) {
   stop(
@@ -34,6 +35,10 @@ spice_read_tree <- function(tree_file) {
   if (!ape::is.rooted(tree)) {
     stop("Ancestry requires a rooted lineage tree. Root the tree before running SPICE ancestry.")
   }
+  if (is.null(tree$edge.length) || length(tree$edge.length)!=nrow(tree$edge) ||
+      any(!is.finite(tree$edge.length)) || any(tree$edge.length < 0))
+    stop("Tree requires finite, nonnegative branch lengths on every edge.")
+  if (any(is.na(tree$tip.label) | tree$tip.label == "")) stop("Tree has empty tip labels.")
   if (anyDuplicated(tree$tip.label)) stop("Tree contains duplicated tip labels.")
   tree
 }
@@ -364,7 +369,7 @@ spice_parse_node_posteriors <- function(chain_results, state_map, min_probabilit
       stringsAsFactors=FALSE
     )
     for (i in seq_len(nrow(d))) {
-      safe <- make.names(d$state[i])
+      safe <- paste0("state_", d$state_code[i])
       out[[paste0("posterior_", safe)]] <- d$posterior_mean[i]
     }
     out
@@ -458,6 +463,12 @@ spice_run_ancestry_once <- function(
   }, integer(1))
   ancestry$node_qc_status <- ifelse(!ancestry$node_qc_pass, "failed",
     ifelse(ancestry$constant_probability_terms > 0, "eligible_with_constant_probabilities", "passed"))
+  ancestry$qc_policy <- SPICE_QC_POLICY
+  ancestry$spice_version <- Sys.getenv("SPICE_VERSION", "unknown")
+  ancestry$qc_rhat_threshold <- max_rhat
+  ancestry$qc_bulk_ess_threshold <- min_bulk_ess
+  ancestry$qc_tail_ess_threshold <- min_tail_ess
+  ancestry$mcmc_hyperprior <- trimws(gsub("[[:space:]]+", " ", hyperprior))
   ancestry$run_qc_pass <- run_qc_pass
   ancestry$usable <- ancestry$run_qc_pass & ancestry$node_qc_pass & ancestry$confident
   ancestry$tree_md5 <- unname(tools::md5sum(tree_file))
@@ -491,6 +502,8 @@ spice_run_ancestry_once <- function(
       c(
         tree=normalizePath(tree_file, mustWork=FALSE),
         states=ifelse(is.null(state_file), "<in-memory>", normalizePath(state_file, mustWork=FALSE)),
+        spice_version=Sys.getenv("SPICE_VERSION", "unknown"),
+        qc_policy=SPICE_QC_POLICY,
         bayestraits_bin=bayestraits_bin,
         mcmc_chains=chains,
         iterations=iterations,

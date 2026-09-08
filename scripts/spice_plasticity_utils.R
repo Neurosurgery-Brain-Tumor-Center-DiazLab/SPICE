@@ -18,12 +18,12 @@ spice_read_state_order <- function(path) {
     stringsAsFactors=FALSE
   )
   if (any(is.na(out$state) | out$state == "")) stop("State order contains missing state names.")
-  if (any(is.na(out$order))) stop("State order contains non-numeric or missing order values.")
+  if (any(!is.finite(out$order))) stop("State order contains non-finite, non-numeric or missing order values.")
   if (anyDuplicated(out$state)) stop("State order contains duplicated state names.")
   out
 }
 
-spice_read_ancestry <- function(path, min_probability=0.90, tree_file=NULL, states=NULL) {
+spice_read_ancestry <- function(path, min_probability=0.90, tree_file=NULL, states=NULL, expected_qc=NULL) {
   x <- utils::read.table(
     path, header=TRUE, sep="\t", quote="", comment.char="",
     stringsAsFactors=FALSE, check.names=FALSE
@@ -39,6 +39,14 @@ spice_read_ancestry <- function(path, min_probability=0.90, tree_file=NULL, stat
   }
   required_qc <- c("run_qc_pass", "node_qc_pass", "tree_md5", "states_md5")
   if (!all(required_qc %in% names(x))) stop("Ancestry lacks QC/provenance; rerun SPICE ancestry with convergence QC.")
+  if (!"qc_policy" %in% names(x) || anyNA(x$qc_policy) || !all(x$qc_policy == SPICE_QC_POLICY))
+    stop("Ancestry QC policy missing or incompatible; rerun ancestry with the current SPICE version.")
+  if (!is.null(expected_qc)) {
+    for (nm in names(expected_qc)) {
+      if (!nm %in% names(x) || anyNA(x[[nm]]) || !all(x[[nm]] == expected_qc[[nm]]))
+        stop("Observed/permutation setting mismatch: ", nm, ". Use matching settings or rerun ancestry.")
+    }
+  }
   logical_flag <- function(z) tolower(as.character(z)) %in% c("true","t","1")
   if (!nrow(x) || !all(logical_flag(x$run_qc_pass))) stop("Ancestry model QC failed; plasticity blocked.")
   if (!is.null(tree_file) && !all(x$tree_md5 == unname(tools::md5sum(tree_file))))
