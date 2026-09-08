@@ -260,18 +260,29 @@ spice_mcmc_diagnostics <- function(chain_results, min_ess=200, max_psrf=1.1,
     bulk <- safe(posterior::ess_bulk(mat))
     tail <- safe(posterior::ess_tail(mat))
     mcse <- safe(posterior::mcse_mean(mat))
-    constant <- any(apply(mat, 2, function(x) length(unique(x)) == 1))
+    constant_chains <- apply(mat, 2, function(x) length(unique(x)) == 1)
+    constant <- any(constant_chains)
+    shared_constant <- all(constant_chains) && length(unique(as.vector(mat))) == 1
     valid <- all(is.finite(c(rh,bulk,tail,mcse))) && !constant
     pass <- valid && rh < max_rhat && bulk >= min_bulk_ess && tail >= min_tail_ess
     is_node <- grepl("^x[0-9]+_p_", nm) || grepl("^root_p_", nm)
+    # Derived state probabilities may be constant at BayesTraits output precision.
+    # This is an explicit exception, not an estimated convergence statistic.
+    constant_eligible <- is_node && shared_constant && mat[1,1] >= 0 && mat[1,1] <= 1
+    pass <- pass || constant_eligible
     node <- if (grepl("^x[0-9]+_p_", nm)) sub("^x([0-9]+)_.*", "T\\1", nm) else
       if (grepl("^root_p_", nm)) "T1" else NA_character_
     data.frame(parameter=nm, ESS=ess, PSRF_point=ps[1], PSRF_upper=ps[2],
       ESS_pass=is.finite(ess) && ess >= min_ess,
       PSRF_pass=is.finite(ps[1]) && ps[1] <= max_psrf,
       Rhat=rh, ESS_bulk=bulk, ESS_tail=tail, MCSE_mean=mcse,
-      diagnostic_status=if (constant) "constant_chain" else if (!valid) "unavailable" else
+      diagnostic_status=if (constant_eligible) "constant_consistent" else
+        if (all(constant_chains) && !shared_constant) "constant_disagreement" else
+        if (constant) "constant_chain" else if (!valid) "unavailable" else
         if (pass) "pass" else "fail",
+      diagnostic_available=valid,
+      constant_chains=sum(constant_chains),
+      constant_value=if (shared_constant) mat[1,1] else NA_real_,
       qc_pass=pass, scope=if (is_node) "node" else "model", node_id=node,
       draws_per_chain=nrow(mat), chains=ncol(mat), stringsAsFactors=FALSE)
   })
@@ -441,6 +452,12 @@ spice_run_ancestry_once <- function(
     d <- diagnostics[!is.na(diagnostics$node_id) & diagnostics$node_id == n,,drop=FALSE]
     nrow(d) > 0 && all(d$qc_pass)
   }, logical(1))
+  ancestry$constant_probability_terms <- vapply(ancestry$node_id, function(n) {
+    sum(diagnostics$diagnostic_status == "constant_consistent" &
+        !is.na(diagnostics$node_id) & diagnostics$node_id == n)
+  }, integer(1))
+  ancestry$node_qc_status <- ifelse(!ancestry$node_qc_pass, "failed",
+    ifelse(ancestry$constant_probability_terms > 0, "eligible_with_constant_probabilities", "passed"))
   ancestry$run_qc_pass <- run_qc_pass
   ancestry$usable <- ancestry$run_qc_pass & ancestry$node_qc_pass & ancestry$confident
   ancestry$tree_md5 <- unname(tools::md5sum(tree_file))

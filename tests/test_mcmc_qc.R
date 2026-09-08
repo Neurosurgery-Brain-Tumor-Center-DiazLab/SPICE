@@ -93,3 +93,24 @@ cat("PASS: posterior cutoff sensitivity preserves convergence gating\n")
 stopifnot(spice_derive_seed(12345,0)==12345L,spice_derive_seed(12345,1)==12346L,
           spice_derive_seed(2147483646,1)==1L)
 cat("PASS: deterministic seed derivation\n")
+
+# Only shared constant derived probabilities qualify; model parameters do not.
+shared <- good
+for (i in 1:3) shared[[i]]$x1_p_0 <- 1
+cd <- spice_mcmc_diagnostics(shared)
+stopifnot(cd$qc_pass[2],cd$diagnostic_status[2]=="constant_consistent",
+          !cd$diagnostic_available[2],is.na(cd$Rhat[2]),cd$constant_value[2]==1)
+for (i in 1:3) shared[[i]]$q01 <- 1
+stopifnot(!spice_mcmc_diagnostics(shared)$qc_pass[1])
+shared[[3]]$x1_p_0 <- 0
+cd <- spice_mcmc_diagnostics(shared)
+stopifnot(!cd$qc_pass[2],cd$diagnostic_status[2]=="constant_disagreement")
+shared[[3]]$x1_p_0 <- runif(4000)
+stopifnot(!spice_mcmc_diagnostics(shared)$qc_pass[2])
+# A varying probability still needs full diagnostics when another term is constant.
+mixed <- good
+for (i in 1:3) mixed[[i]]$x1_p_1 <- 0
+mixed[[3]]$x1_p_0 <- mixed[[3]]$x1_p_0+.5
+md <- spice_mcmc_diagnostics(mixed)
+stopifnot(!md$qc_pass[md$parameter=="x1_p_0"],md$qc_pass[md$parameter=="x1_p_1"])
+cat("PASS: consistent constant probabilities, disagreement, partial constants and strict model QC\n")
