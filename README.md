@@ -20,8 +20,10 @@ SPICE combines somatic SNV filtering, phylogenetic inference and subclone classi
 ## Workflow
 
 ```text
-Somatic SNVs (Monopogen)
-  → filter → phylogeny → clone/subclone trees ─┐
+Monopogen output → import-monopogen ─┐
+                                    ├→ standard cell × variant bundle
+User-supplied counts + metadata ─────┘
+  → filter → IQ-TREE2 → clone/subclone trees ─┐
                                              ├→ ancestry → plasticity
 External/static-barcode lineage               │
   → prepared clone/tree ──────────────────────┘
@@ -33,7 +35,7 @@ For either route, provide cell-state annotations for ancestry and a biological s
 
 ### Software and packages
 
-Use Python **3.10 or later** (the IQ-TREE helper uses `int | None` annotations), R with `Rscript` on PATH, and a Unix-like environment for parallel filtering. The packages directly loaded by the four-stage CLI are listed below; package installers also resolve their dependencies.
+Use Python **3.10 or later** (the IQ-TREE helper uses `int | None` annotations), R with `Rscript` on PATH, and a Unix-like environment for parallel filtering. The packages directly loaded by the modular CLI are listed below; package installers also resolve their dependencies.
 
 | Component | Required software/packages | Use |
 | --- | --- | --- |
@@ -44,7 +46,7 @@ Use Python **3.10 or later** (the IQ-TREE helper uses `int | None` annotations),
 | `plasticity` | R: `ape`, `coda`, `janitor`, `posterior`; BayesTraits for permutations | Edge classification and permutation ancestry |
 | R runtime | `parallel`, `stats`, `utils`, `tools`, base graphics | Included with R; no separate installation |
 
-Install [Monopogen](https://github.com/KChen-lab/Monopogen) and complete its somatic calling and matrix preparation before the SNV route. SPICE reads these outputs directly. Follow Monopogen’s installation and reference-data instructions for that upstream analysis.
+Monopogen is optional. Only users importing its results need to run [Monopogen](https://github.com/KChen-lab/Monopogen) upstream. Direct standard input requires no Monopogen installation or files. The importer uses base R to decode RDS files; the shared filter and phylogeny retain their R/IQ-TREE dependencies.
 
 ### Download SPICE and install Python packages
 
@@ -115,17 +117,108 @@ See [CHANGELOG](CHANGELOG.md) for output-format changes and `CITATION.cff` for c
 
 ## Input files
 
-### Monopogen files and selected barcodes
+### Standard cell × variant bundle (schema v1)
 
-Place chromosome 1–22 files in the input directory. The workflow checks `chrN.cell_snv.*.csv`, `chrN.cell_snv.*.filter.csv`, `chrN.cell_snv.mat.gz`, `chrN.cell_snv.snvID.csv`, and `chrN.putativeSNVs.csv`. Cell lookup uses `chr1.cell_snv.cellID.csv`, and chromosome filtering uses `chrN.cell_snv.cellID.filter.csv`. Matrix merging reads `chrN.SNV_mat.RDS` with variant IDs as row names, cell barcodes as column names, and `REF_count/ALT_count` entries. Variant IDs have the form `chr1:184413:C:A`.
+A bundle is a directory containing exactly named `matrix.tsv`, `variants.tsv`, and
+`cells.tsv` files (UTF-8, tab-separated, with headers). Additional files are ignored.
+The matrix is **cells in rows, variants in columns**, not the legacy output CSV
+orientation. No transposition, genotype inference, or imputation is guessed.
 
-The selected-barcode file has a `cell_barcodes` header:
+`matrix.tsv`:
+
+```tsv
+cell_id	chr1:10:A:G	chr1:20:C:T
+cell_001	3/0	1/2
+cell_002	0/4	0/0
+```
+
+- The first header is exactly `cell_id`; remaining headers are unique variant IDs.
+- IDs are `chrom:pos:REF:ALT`; `pos` is a positive 1-based integer, alleles are
+  uppercase A/C/G/T and must differ. Chromosome names contain no colon/whitespace.
+- Each entry is **REF read count / ALT read count**, not a VCF genotype. Both are
+  nonnegative integers without leading zeros; their sum is at most 2,147,483,647.
+  `0/0` means no coverage and becomes `N` in FASTA. Empty, `NA`, `./.`, negative,
+  fractional and malformed entries are rejected. Mixed support becomes the
+  existing IUPAC ambiguity code; there is no new allele-fraction caller.
+- Cell IDs must be unique and contain only letters, digits, `_`, `.`, or `-`.
+  `Variant_ID` is reserved for the legacy output CSV. IDs remain unchanged
+  through FASTA and downstream tip labels.
+- Empty matrices, duplicate headers/cells, ragged rows and inconsistent metadata
+  are errors. Distinct variants with identical count patterns remain separate sites.
+
+`variants.tsv` (all five columns required):
+
+```tsv
+variant_id	chrom	pos	ref	alt
+chr1:10:A:G	chr1	10	A	G
+chr1:20:C:T	chr1	20	C	T
+```
+
+Every matrix variant must occur exactly once, with matching coordinates/alleles;
+extra metadata variants are rejected. Matrix column order defines site order;
+metadata row order does not matter. Additional annotation columns are preserved.
+Optional quality metadata must include **all six** columns or none:
+`Depth_total`, `Depth_ref`, `Depth_alt`, `SVM_pos_score`,
+`LDrefine_merged_score`, `BAF_alt`. Values must be finite numbers; empty/`NA`
+values become zero during metadata QC, preserving the existing Monopogen behavior.
+Other caller scores must not be relabeled as Monopogen scores without justification.
+
+`cells.tsv`:
+
+```tsv
+cell_id
+cell_001
+cell_002
+```
+
+Every matrix cell must occur exactly once, with no extra cells. Additional metadata
+columns are allowed. Optional `pass_filter` is exactly `true` or `false` (default
+`true`) and records upstream cell eligibility; false cells are excluded before
+count filtering. Importing Monopogen sets it from the intersection of chromosome
+filter lists and preserves per-chromosome metadata in names such as `chr1.index`.
+
+### Optional Monopogen import
+
+For each available `chr*.SNV_mat.RDS`, provide the matching
+`chr*.cell_snv.cellID.csv` (with `cell`), `chr*.cell_snv.cellID.filter.csv`
+(with `cell`), and `chr*.putativeSNVs.csv`. Putative metadata requires `chr`, `pos`,
+`Ref_allele`, `Alt_allele` and the six quality columns above; all additional
+annotations, including two-/three-locus scores, are preserved. Raw `.mat.gz` and
+`snvID.csv` files are not needed when prepared RDS matrices exist. Partial chromosome
+sets and chrX/chrY are supported; every discovered matrix must have its companions.
+
+RDS matrices have variant IDs in row names, cell barcodes in column names, and
+`REF_count/ALT_count` entries. Chromosome cell sets must match; differing column
+orders are aligned by barcode. Every matrix variant needs putative metadata;
+putative records absent from the matrix cannot become observed alignment sites.
+Repeated variant IDs are collapsed only when counts and metadata agree; conflicts
+are errors. Distinct variant IDs sharing count patterns are never collapsed.
+
+```bash
+python3 SPICE.py import-monopogen /data/monopogen inputs sample
+# Writes inputs/sample/{matrix,variants,cells}.tsv, without SPICE quality/count filtering.
+```
+
+The standalone importer refuses to overwrite an existing bundle. The convenience
+workflow can reuse its saved bundle only after re-importing and verifying that
+all counts/metadata agree; changed input requires a new output directory/prefix. It retains all matrix cells
+and marks upstream eligibility instead of discarding their counts. Import order is
+chromosome order, then the original matrix site order; cell order follows the first
+chromosome cell metadata. Source RDS filenames are retained in `source_file`.
+
+### Optional selected barcodes
+
+The selected-barcode file has exactly one `cell_barcodes` header:
 
 ```text
 cell_barcodes
 cell_001
 cell_002
 ```
+
+Omit it to use all eligible cells. Duplicate or unknown selected IDs are errors;
+known cells marked `pass_filter=false` remain excluded. The selected file determines
+cell order when supplied. Otherwise matrix row order is used.
 
 ### Cell states: `cell_states.tsv`
 
@@ -168,12 +261,12 @@ Ancestry/plasticity take one rooted Newick tree or a NEXUS file with `.nex`/`.ne
 
 ## Somatic SNV filtering
 
-Filter Monopogen calls by reference/alternative support, SVM/LD scores, and alternative BAF. SPICE merges chromosome matrices, selects the requested cells, filters variants by the number of ALT-supporting cells, and then filters cells by retained SNV count. Distinct genomic variants are retained even when their read-count patterns match; duplicate variant IDs are collapsed only when their patterns agree.
+Both inputs use the same filtering implementation. Metadata QC runs first when enabled, followed by cell eligibility/selection, the existing variant ALT-support count cutoff, and then the cell retained-SNV cutoff. A supporting cell has ALT count > 0. The count filter is one pass in this order; it does not iterate after excluding cells. Distinct genomic variants are retained even when their read-count patterns match; duplicate variant IDs are collapsed only when their patterns agree.
 
 ### Usage
 
 ```text
-python3 SPICE.py filter input_directory output_directory prefix cell_barcode [options]
+python3 SPICE.py filter input_directory output_directory prefix [cell_barcode] [options]
 ```
 
 ```bash
@@ -181,23 +274,38 @@ python3 SPICE.py filter /data/monopogen/ results/sample/ sample /data/cell_barco
   --min_alt_cells_per_snv 5 --min_snvs_per_cell 5 --threads 4
 ```
 
-Use a trailing slash on filter/phylogeny output directories and paths without whitespace for the phylogeny commands. `Depth_total` must also be at least `depth_ref + depth_alt`.
+Direct input, with the same cutoffs:
+
+```bash
+python3 SPICE.py filter inputs/sample results/sample sample --input_format standard \
+  --min_alt_cells_per_snv 5 --min_snvs_per_cell 5 --threads 4
+```
+
+Output paths may contain spaces and need no trailing slash. Metadata QC additionally
+requires `Depth_total >= depth_ref + depth_alt`. With `--variant_qc auto`, the six
+quality fields trigger the existing quality thresholds; if absent, only shared
+cell/SNV count filtering applies. `metadata` requires the six fields; `none`
+explicitly disables metadata QC. Partial quality schemas and changed quality
+thresholds when QC is disabled/absent are rejected. No empty FASTA is produced when
+filters remove all variants or cells.
 
 ### Parameters
 
 | Parameter | Type / accepted values | Default | Description |
 | --- | --- | --- | --- |
-| `input_directory` | Directory | `Required` | Monopogen somatic-output directory with chromosome 1–22 files and SNV matrices. |
-| `output_directory` | Directory | `Required` | Directory for this stage’s outputs; use a trailing slash for filter and phylogeny. |
+| `input_directory` | Directory | `Required` | Monopogen output or standard bundle directory, selected by --input_format. |
+| `output_directory` | Directory | `Required` | Directory for this stage’s outputs. |
 | `prefix` | String | `Required` | Sample/lineage identifier used in output filenames. |
-| `cell_barcode` | TSV file | `Required` | Selected cell barcodes with a cell_barcodes header. |
-| `--depth_ref` | Integer | `5` | Minimum Monopogen Depth_ref value (≥ cutoff). |
-| `--depth_alt` | Integer | `5` | Minimum Monopogen Depth_alt value (≥ cutoff). |
+| `cell_barcode` | TSV file | All eligible cells | Optional selected cell barcodes with a cell_barcodes header. |
+| `--input_format` | monopogen / standard | `monopogen` | Input representation; preserves the existing convenience command. |
+| `--variant_qc` | auto / metadata / none | `auto` | Metadata quality policy; count filtering always applies. |
+| `--depth_ref` | Integer ≥ 0 | `5` | Minimum Monopogen Depth_ref value (≥ cutoff). |
+| `--depth_alt` | Integer ≥ 0 | `5` | Minimum Monopogen Depth_alt value (≥ cutoff). |
 | `--svm_pos_score` | Number | `0.1` | Minimum threshold from the Monopogen SVM module |
 | `--ldrefine_merged_score` | Number | `0.25` | Minimum threshold from the Monopogen LD refinement module |
 | `--baf_alt` | Number | `0.5` | Maximum threshold for the alternative allele frequency (BAF) |
-| `--min_alt_cells_per_snv` | Integer | `5` | Retain variants with ALT reads in at least this many selected cells. |
-| `--min_snvs_per_cell` | Integer | `5` | Retain cells supporting at least this many variants after the variant-count filter. |
+| `--min_alt_cells_per_snv` | Integer ≥ 0 | `5` | Retain variants with ALT reads in at least this many selected cells. |
+| `--min_snvs_per_cell` | Integer ≥ 0 | `5` | Retain cells supporting at least this many variants after the variant-count filter. |
 | `--threads` | Integer ≥ 1 | `1` | R worker processes for parsing the SNV matrix. |
 | `-h`, `--help` | Flag | Exit only when supplied | Display this stage’s usage and options, then exit. |
 
@@ -207,8 +315,11 @@ Files are written in `output_directory`; `<prefix>` is `sample` in the example.
 
 | File | Content |
 | --- | --- |
-| `<prefix>.cellID.filter.csv` | Common chromosome-filtered cell barcodes and indices |
-| `<prefix>.SNVs.filter.csv` | Calls passing the Monopogen quality thresholds |
+| `<prefix>.standard/` | Validated unfiltered standard bundle saved by the Monopogen convenience route |
+| `<prefix>.cellID.filter.csv` | Selected eligible cells and 1-based analysis indices; original importer indices remain in cells.tsv |
+| `<prefix>.selected_cells.tsv` | Selected eligible cells supplied to the existing R filter |
+| `<prefix>.SNV_mat.input.tsv` | Quality-filtered variant × selected-cell count matrix supplied to the RDS bridge |
+| `<prefix>.SNVs.filter.csv` | Variants passing enabled metadata QC, with preserved annotations |
 | `<prefix>.SNV_mat.RDS` | Merged matrix after call filtering and variant-ID deduplication |
 | `CellMutationDist.pdf` | Mutation-per-cell and cell-per-mutation distributions before count cutoffs |
 | `<prefix>.SNV_mat.filter.csv` | Final selected matrix: `Variant_ID` followed by cell columns, with read-count entries |
@@ -224,7 +335,23 @@ Infer a maximum-likelihood tree with IQ-TREE, root it, and define clones using i
 python3 SPICE.py phylogeny fasta_path output_directory prefix [options]
 ```
 
-Store the alignment as `<output_directory>/<prefix>.fasta` so that IQ-TREE produces the `<prefix>.fasta.treefile` consumed by clone cutting:
+For a single command from counts through clone partitioning, use:
+
+```bash
+python3 SPICE.py phylogeny inputs/sample results/sample sample --input_format standard \
+  --min_alt_cells_per_snv 5 --min_snvs_per_cell 5 --threads 4
+# Or use --input_format monopogen with a Monopogen directory as the first argument.
+```
+
+`phylogeny --input_format` defaults to `fasta` (existing behavior). `standard` and
+`monopogen` run shared filtering and create `<prefix>.fasta` automatically before
+IQ-TREE2. They accept the filtering parameters/defaults above and optional
+`--cell_barcode FILE`; `--threads` is shared with IQ-TREE. For these combined routes,
+`--threads 0` uses available CPUs for R parsing and IQ-TREE AUTO. Rooting, support,
+and auto/manual clone-cut parameters below are unchanged. The default remains
+midpoint; use `--outgroup` for a biologically justified root when available.
+
+For the existing separate FASTA route, store the alignment as `<output_directory>/<prefix>.fasta` so that IQ-TREE produces the `<prefix>.fasta.treefile` consumed by clone cutting:
 
 ```bash
 cp results/sample/sample.SNV_mat.filter.fasta results/sample/sample.fasta
@@ -247,7 +374,6 @@ python3 SPICE.py phylogeny results/manual/sample.fasta results/manual/ sample \
 
 | Parameter | Type / accepted values | Default | Description |
 | --- | --- | --- | --- |
-| `--include_failed_chisq` | true / false (also t/f, 1/0, yes/no, y/n; case-insensitive) | `false` | Composition-test inclusion flag accepted by the CLI; the phylogeny execution path does not apply this flag. |
 | `--model` | String | `TEST` | IQ-TREE substitution model/model-selection specification, passed as -m. |
 | `--uf_bootstrap_replicates` | Integer ≥ 1000 | `1000` | Ultrafast bootstrap replicates, passed to IQ-TREE as -B. |
 | `--sh_alrt_replicates` | Integer ≥ 1000 | `1000` | SH-aLRT replicates, passed to IQ-TREE as --alrt. |
@@ -265,8 +391,8 @@ python3 SPICE.py phylogeny results/manual/sample.fasta results/manual/ sample \
 | `--threads` | Integer | `1` | IQ-TREE -T value; positive values set threads, 0 or negative values select AUTO. |
 | `--root_method` | midpoint / outgroup / none | `midpoint` | Root the IQ-TREE result by midpoint or named outgroup; none preserves an already rooted result. |
 | `--outgroup` | One or more tip names | `None (unset)` | Space-separated outgroup tip labels; takes precedence over root_method. Required for outgroup rooting. |
-| `fasta_path` | FASTA file | `Required` | Cell alignment, stored as output_directory/prefix.fasta for the examples below. |
-| `output_directory` | Directory | `Required` | Directory for this stage’s outputs; use a trailing slash for filter and phylogeny. |
+| `fasta_path` | File or directory | `Required` | FASTA alignment by default; bundle/Monopogen directory with --input_format standard/monopogen. |
+| `output_directory` | Directory | `Required` | Directory for this stage’s outputs. |
 | `prefix` | String | `Required` | Sample/lineage identifier used in output filenames. |
 | `-h`, `--help` | Flag | Exit only when supplied | Display this stage’s usage and options, then exit. |
 
@@ -308,7 +434,7 @@ Required inputs are a rooted tree and its cell-state table. Run once per clone i
 | --- | --- | --- | --- |
 | `tree` | Newick/NEXUS file | `Required` | Rooted lineage tree in Newick or NEXUS format |
 | `states` | TSV file | `Required` | TSV containing cell_id and state columns |
-| `output_directory` | Directory | `Required` | Directory for this stage’s outputs; use a trailing slash for filter and phylogeny. |
+| `output_directory` | Directory | `Required` | Directory for this stage’s outputs. |
 | `prefix` | String | `Required` | Sample/lineage identifier used in output filenames. |
 | `--bayestraits_bin` | Executable path/name | `None (unset)` | BayesTraits executable; resolved from this option, BAYESTRAITS_BIN, then recognized names on PATH. |
 | `--mcmc_chains` | Integer ≥ 2 | `3` | Number of independent BayesTraits MCMC chains. |
@@ -404,7 +530,7 @@ Each replicate shuffles tip states without replacement on the fixed tree, preser
 | `states` | TSV file | `Required` | TSV containing cell_id and state columns |
 | `ancestral_states` | TSV file | `Required` | Ancestral-state TSV produced by SPICE ancestry |
 | `state_order` | TSV file | `Required` | TSV containing state and order columns |
-| `output_directory` | Directory | `Required` | Directory for this stage’s outputs; use a trailing slash for filter and phylogeny. |
+| `output_directory` | Directory | `Required` | Directory for this stage’s outputs. |
 | `prefix` | String | `Required` | Sample/lineage identifier used in output filenames. |
 | `--perm_replicates` | Integer ≥ 0 | `1000` | Number of tip-state shuffles with ancestry re-estimation; 0 calculates observed plasticity only. |
 | `--sig_direction` | greater / less / two-sided | `greater` | Alternative hypothesis for empirical permutation significance |
@@ -531,3 +657,18 @@ SPICE is distributed under the [GNU General Public License v3.0](LICENSE).
 - Contact: Bohyeon Yu, [bohyeon.yu@ucsf.edu](mailto:bohyeon.yu@ucsf.edu)
 
 Trees used by ancestry must provide finite, nonnegative lengths for every edge; zero lengths are retained as supplied. `state_order.tsv` requires finite numeric orders.
+
+## Input-route regression tests
+
+```bash
+python3 -m unittest discover -s tests -p 'test_*.py'
+```
+
+The input tests create small real chromosome RDS fixtures using base R, run the
+existing R count filter for imported and direct bundles, and compare retained
+matrices/FASTA against each other and the legacy merge/filter path. Tests cover
+site multiplicity, conflicting duplicates, reordered cells, schema errors,
+missing quality metadata, empty results and CLI parameter forwarding. External
+IQ-TREE/clone computation is mocked in the forwarding test; this test does not
+claim numerical tree-inference reproducibility across IQ-TREE runs or versions.
+RDS/filter tests require R and the filter packages listed above.

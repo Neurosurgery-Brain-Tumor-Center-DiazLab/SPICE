@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Add schema-v1 cell × variant count/metadata TSV bundles, strict validation,
+  and an optional `import-monopogen` adapter preserving sites and annotations.
+- Route Monopogen convenience and direct input through the existing count filter;
+  `phylogeny --input_format standard|monopogen` continues through clone cutting.
+- Remove the unused composition-test inclusion CLI flag.
+- Preserve metadata QC defaults, support ordering, clone selection, rooting and
+  IQ-TREE resource handling; fix FASTA metadata-name collisions and normalize
+  combined-workflow output paths.
+- Add real-R import/filter equivalence and schema/forwarding regression tests.
+
 ## 0.2.0 — unreleased
 
 - Execute IQ-TREE with argument lists and quote generated shell scripts.

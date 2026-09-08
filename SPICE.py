@@ -2,7 +2,8 @@
 """
 SPICE: Single-cell Plasticity Inference and Clonal Evolution
 
-This module provides a command-line interface with four subcommands:
+This module provides a command-line interface with modular subcommands:
+- import-monopogen
 - filter
 - phylogeny
 - ancestry
@@ -18,169 +19,95 @@ from typing import Optional, Dict, Any
 import math
 import shutil
 import shlex
+import tempfile
 from scripts.runtime_info import VERSION, capture_runtime, save_runtime
 from scripts.summarize_clones import run_summary
 
 PROJECT_DIR = Path(__file__).resolve().parent
 SCRIPTS_DIR = PROJECT_DIR / "scripts"
 
-from scripts.monopogen_filter import *
+from scripts.standard_input import load_bundle, select_quality, read_table, write_table
+from scripts.import_monopogen import import_monopogen
 from scripts.convert_matrix_to_fasta import *
 from scripts.IQTREE2 import *
 
 # ------------------------- Subcommand Implementations -------------------------
+def add_filter_options(parser):
+    parser.add_argument("--depth_ref", type=int, default=5,
+                          help="Minimum value of the variant Depth_ref metadata field")
+    parser.add_argument("--depth_alt", type=int, default=5,
+                          help="Minimum value of the variant Depth_alt metadata field")
+    parser.add_argument("--svm_pos_score", type=float, default=0.1,
+                          help="Minimum threshold from the Monopogen SVM module")
+    parser.add_argument("--ldrefine_merged_score", type=float, default=0.25,
+                          help="Minimum threshold from the Monopogen LD refinement module")
+    parser.add_argument("--baf_alt", type=float, default=0.5,
+                          help="Maximum threshold for the alternative allele frequency (BAF)")
+    parser.add_argument("--min_alt_cells_per_snv", type=int, default=5,
+                          help="Minimum number of cells that must support a mutated allele")
+    parser.add_argument("--min_snvs_per_cell", type=int, default=5,
+                          help="Minimum number of somatic SNVs that must be supported")
+    parser.add_argument('--variant_qc', choices=['auto', 'metadata', 'none'], default='auto', help='auto uses all six QC metadata fields when present; metadata requires them; none skips metadata QC')
+
+
+def run_import_monopogen(args):
+    import_monopogen(args.input_directory, Path(args.output_directory) / args.prefix)
+
+
 def run_filter(args: argparse.Namespace) -> None:
-    """
-    Filter step entrypoint.
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-        Parsed arguments containing input/output paths and thresholds.
-    """
-    print("[SPICE:filter] Starting filter with arguments:")
-    for k, v in vars(args).items():
-        print(f"  - {k}: {v}")
-
-    input_directory = args.input_directory
-    output_directory = args.output_directory
-    sample_id = getattr(args, "sample_id", None) or getattr(args, "prefix", None)
-    cell_barcode = args.cell_barcode
-    threads = args.threads
-
-    print("[SPICE:filter] Input directory :", input_directory)
-    print("[SPICE:filter] Output directory:", output_directory)
-    print("[SPICE:filter] Sample ID       :", sample_id)
-
-    # Validate input directory
-    if not os.path.isdir(input_directory):
-        print(f"Error: The input directory '{input_directory}' does not exist.", file=sys.stderr)
-        sys.exit(1)
-
-    # Create the output directory if it doesn't exist
-    if not os.path.exists(output_directory):
-        try:
-            os.makedirs(output_directory, exist_ok=True)
-            print(f"Created output directory: '{output_directory}'")
-        except Exception as e:
-            print(f"Error: Failed to create output directory '{output_directory}': {e}", file=sys.stderr)
-            sys.exit(1)
-    else:
-        print(f"Output directory '{output_directory}' already exists.")
-
-    # Define thresholds with their comparison direction for clearer reporting
-    thresholds = {
-        "Depth_ref": (args.depth_ref, ">="),
-        "Depth_alt": (args.depth_alt, ">="),
-        "SVM_pos_score": (args.svm_pos_score, ">="),
-        "LDrefine_merged_score": (args.ldrefine_merged_score, ">="),
-        "BAF_alt": (args.baf_alt, "<="),
-        "min_alt_cells_per_snv": (args.min_alt_cells_per_snv, ">="),
-        "min_snvs_per_cell": (args.min_snvs_per_cell, ">="),
-    }
-
-    print("\nThresholds for filtering putative SNVs:")
-    for key, (value, op) in thresholds.items():
-        print(f"  {key}: {op} {value}")
-
-    # ------------------------ Step 1: Check required files ---------------------
-    print("\nChecking for required files...")
-    try:
-        missing = check_monopogen_variants_files(input_directory)
-    except NameError:
-        print("Error: 'check_monopogen_variants_files' is not implemented. Please provide this helper.", file=sys.stderr)
-        sys.exit(2)
-
-    if not missing:
-        print("All required files are present for chromosomes 1 through 22.")
-    else:
-        print("Missing files detected:")
-        for chr_key, files in missing.items():
-            print(f"{chr_key}:")
-            for file in files:
-                print(f"  - {file}")
-        print("\nPlease ensure all required files are present before proceeding.", file=sys.stderr)
-        sys.exit(1)  # Exit if any files are missing
-
-    # -------- Step 2: Load initial cell barcode and index information ----------
-    print("\nLoading initial cell barcode and index information from chr1.cell_snv.cellID.csv...")
-    try:
-        cell_info_dict = load_initial_cell_info(input_directory)
-    except NameError:
-        print("Error: 'load_initial_cell_info' is not implemented. Please provide this helper.", file=sys.stderr)
-        sys.exit(2)
-
-    # --- Step 3: Load filtered cell barcodes from all chromosomes --------------
-    print("\nLoading filtered cell barcodes from all chromosomes and identifying common cells...")
-    try:
-        common_cells = load_filtered_cells(input_directory)
-    except NameError:
-        print("Error: 'load_filtered_cells' is not implemented. Please provide this helper.", file=sys.stderr)
-        sys.exit(2)
-
-    # -------- Step 4: Filter initial info to retain only common cells ----------
-    print("\nFiltering initial cell info to retain only common cells...")
-    try:
-        filtered_cell_info = filter_common_cells(cell_info_dict, common_cells)
-    except NameError:
-        print("Error: 'filter_common_cells' is not implemented. Please provide this helper.", file=sys.stderr)
-        sys.exit(2)
-
-    # --- Step 5: Save filtered common cell barcodes/index information ----------
-    print("\nSaving filtered common cell barcodes and index information...")
-    try:
-        filtered_cells_df = save_filtered_cell_info(filtered_cell_info, sample_id, output_directory)
-    except NameError:
-        print("Error: 'save_filtered_cell_info' is not implemented. Please provide this helper.", file=sys.stderr)
-        sys.exit(2)
-
-    # ---------------- Step 6: Process putativeSNVs.csv files -------------------
-    print("\nProcessing putativeSNVs.csv files for all chromosomes...")
-    try:
-        process_putative_snvs(input_directory, sample_id, output_directory, thresholds)
-    except NameError:
-        print("Error: 'process_putative_snvs' is not implemented. Please provide this helper.", file=sys.stderr)
-        sys.exit(2)
-
-    # ---------------- Step 7: Run R merging script --------------
-    print("\nMerging results via R script (monopogen_merge.R)...")
-    cmd = ["Rscript", str(SCRIPTS_DIR / "monopogen_merge.R"), input_directory, output_directory, str(sample_id)]
-    try:
-        subprocess.run(cmd, check=True)
-        print("R merge script completed successfully.")
-    except FileNotFoundError:
-        print("Warning: 'Rscript' not found or 'scripts/monopogen_merge.R' missing. Skipping this step.", file=sys.stderr)
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing R script: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # ---------------- Step 8: Mutation filter --------------
-    print("\nRunning mutation filter R script (mutation_filter.R)...")
-    cmd = [
-        "Rscript", str(SCRIPTS_DIR / "mutation_filter.R"),
-        output_directory, str(sample_id), cell_barcode,
-        str(thresholds["min_alt_cells_per_snv"][0]),
-        str(thresholds["min_snvs_per_cell"][0]),
-        str(threads)
-        ]
-    try:
-        subprocess.run(cmd, check=True)
-        print("Mutation filter R script completed successfully.")
-    except FileNotFoundError:
-        print("Warning: 'Rscript' not found or 'scripts/mutation_filter.R' missing. Skipping this step.", file=sys.stderr)
-    except subprocess.CalledProcessError as e:
-        print(f"Error executing mutation_filter.R: {e}", file=sys.stderr)
-        sys.exit(1)
-
-    # ------------------------- Step 9: Convert to FASTA ------------------------
-    print("\nConverting somatic SNV matrix to FASTA...")
-    try:
-        convert_snv_matrix_to_fasta(output_directory, sample_id)
-    except NameError:
-        print("Error: 'convert_snv_matrix_to_fasta' is not implemented. Please provide this helper.", file=sys.stderr)
-        sys.exit(2)
-
-    print("\nAll processes completed successfully.")
+    """Normalize either input, then run the existing count filter and FASTA mapper."""
+    output = Path(args.output_directory).resolve()
+    output.mkdir(parents=True, exist_ok=True)
+    source = Path(args.input_directory).resolve()
+    if args.input_format == "monopogen":
+        source_standard = output / f"{args.prefix}.standard"
+        if source_standard.exists():
+            with tempfile.TemporaryDirectory() as temporary:
+                candidate = Path(temporary) / 'standard'
+                import_monopogen(source, candidate)
+                if load_bundle(candidate) != load_bundle(source_standard):
+                    raise ValueError('existing convenience bundle differs from current input; use a new output directory/prefix')
+        else:
+            import_monopogen(source, source_standard)
+        source = source_standard
+    tables = load_bundle(source)
+    ids, eligible, vm, cm = select_quality(tables, args)
+    selected = [r[0] for r in eligible]
+    if args.cell_barcode:
+        h, rows = read_table(args.cell_barcode)
+        if h != ['cell_barcodes']:
+            raise ValueError('barcode file requires exactly one cell_barcodes column')
+        requested = [r[0] for r in rows]
+        if len(set(requested)) != len(requested):
+            raise ValueError('duplicate selected cell barcodes')
+        unknown = set(requested) - set(cm)
+        if unknown:
+            raise ValueError(f'unknown selected cell barcodes: {sorted(unknown)}')
+        selected = [c for c in requested if c in selected]
+    if not ids or not selected:
+        raise ValueError('no variants or eligible cells remain after metadata QC/selection')
+    column_index = {v: i for i, v in enumerate(tables[0][0])}
+    positions = [column_index[v] for v in ids]
+    by_cell = {r[0]: r for r in eligible}
+    # Check for empty results before launching R or producing a misleading FASTA.
+    retained = [i for i in positions if sum(int(by_cell[c][i].split('/')[1]) > 0 for c in selected) >= args.min_alt_cells_per_snv]
+    if not retained or not any(sum(int(by_cell[c][i].split('/')[1]) > 0 for i in retained) >= args.min_snvs_per_cell for c in selected):
+        raise ValueError('no variants or cells remain after count filtering; review cutoffs')
+    matrix_path = output / f'{args.prefix}.SNV_mat.input.tsv'
+    write_table(matrix_path, ['Variant_ID', *selected],
+                [[vid, *[by_cell[c][i] for c in selected]] for vid,i in zip(ids, positions)])
+    cell_path = output / f'{args.prefix}.selected_cells.tsv'
+    write_table(cell_path, ['cell_barcodes'], [[c] for c in selected])
+    write_table(output / f'{args.prefix}.cellID.filter.csv', ['cell', 'index'],
+                [[c, i+1] for i,c in enumerate(selected)], ',')
+    write_table(output / f'{args.prefix}.SNVs.filter.csv', tables[1][0],
+                [[vm[v][k] for k in tables[1][0]] for v in ids], ',')
+    subprocess.run(['Rscript', str(SCRIPTS_DIR / 'matrix_bridge.R'), 'import',
+                    str(matrix_path), str(output / f'{args.prefix}.SNV_mat.RDS')], check=True)
+    subprocess.run(['Rscript', str(SCRIPTS_DIR / 'mutation_filter.R'),
+                    str(output) + os.sep, args.prefix, str(cell_path),
+                    str(args.min_alt_cells_per_snv), str(args.min_snvs_per_cell), str(args.threads)], check=True)
+    convert_snv_matrix_to_fasta(str(output) + os.sep, args.prefix)
 
 
 def run_phylogeny(args: argparse.Namespace) -> None:
@@ -200,8 +127,16 @@ def run_phylogeny(args: argparse.Namespace) -> None:
     # Validate inputs and derive paths
     # -------------------------------------------------------------------------
     fasta_path = args.fasta_path
-    output_directory = args.output_directory
+    output_directory = str(Path(args.output_directory).resolve()) + os.sep
+    Path(output_directory).mkdir(parents=True, exist_ok=True)
     sample_id = args.prefix
+    if getattr(args, 'input_format', 'fasta') != 'fasta':
+        filtering = argparse.Namespace(**vars(args))
+        filtering.input_directory = fasta_path
+        filtering.threads = args.threads if args.threads > 0 else (os.cpu_count() or 1)
+        run_filter(filtering)
+        fasta_path = str(Path(output_directory) / f'{sample_id}.fasta')
+        shutil.copyfile(Path(output_directory) / f'{sample_id}.SNV_mat.filter.fasta', fasta_path)
 
     #fasta_path = Path(output_directory) / f"{sample_id}.SNV_mat.filter.fasta"
     #if not fasta_path.exists():
@@ -604,6 +539,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"SPICE {VERSION}")
     subparsers = parser.add_subparsers(dest="command", metavar="")
 
+    p_import = subparsers.add_parser('import-monopogen', help='Convert Monopogen RDS/count metadata to a standard cell x variant bundle')
+    p_import.add_argument('input_directory', help='Monopogen directory')
+    p_import.add_argument('output_directory', help='Parent output directory')
+    p_import.add_argument('prefix', help='New bundle directory name')
+    p_import.set_defaults(func=run_import_monopogen)
+
     # ------------------------------- filter -----------------------------------
     p_filter = subparsers.add_parser(
         "filter",
@@ -612,26 +553,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     # Mandatory positional arguments
-    p_filter.add_argument("input_directory", help="Path to the monopogen somatic variants calling output folder")
+    p_filter.add_argument("input_directory", help="Monopogen directory or standard bundle directory (see --input_format)")
     p_filter.add_argument("output_directory", help="Path to the directory where outputs will be saved")
     p_filter.add_argument("prefix", help="Identifier to prefix output filenames")
-    p_filter.add_argument("cell_barcode", help="File containing cell barcodes to be used in the analysis")
+    p_filter.add_argument("cell_barcode", nargs="?", default=None, help="File containing cell barcodes to be used in the analysis")
+
+    p_filter.add_argument('--input_format', choices=['monopogen', 'standard'], default='monopogen', help='Input directory format')
 
     # Optional arguments
-    p_filter.add_argument("--depth_ref", type=int, default=5,
-                          help="Minimum threshold for the number of cells supporting the reference allele")
-    p_filter.add_argument("--depth_alt", type=int, default=5,
-                          help="Minimum threshold for the number of cells supporting the alternative allele")
-    p_filter.add_argument("--svm_pos_score", type=float, default=0.1,
-                          help="Minimum threshold from the Monopogen SVM module")
-    p_filter.add_argument("--ldrefine_merged_score", type=float, default=0.25,
-                          help="Minimum threshold from the Monopogen LD refinement module")
-    p_filter.add_argument("--baf_alt", type=float, default=0.5,
-                          help="Maximum threshold for the alternative allele frequency (BAF)")
-    p_filter.add_argument("--min_alt_cells_per_snv", type=int, default=5,
-                          help="Minimum number of cells that must support a mutated allele")
-    p_filter.add_argument("--min_snvs_per_cell", type=int, default=5,
-                          help="Minimum number of somatic SNVs that must be supported")
+    add_filter_options(p_filter)
     p_filter.add_argument("--threads", type=int, default=1,
                           help="Number of threads to use")
     p_filter.set_defaults(func=run_filter)
@@ -642,9 +572,9 @@ def build_parser() -> argparse.ArgumentParser:
         help="Infer phylogeny with IQ-TREE2 and apply support/branch filters",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
-    p_phy.add_argument("--include_failed_chisq", type=str_to_bool_strict, default=False,
-                       choices=[True, False],
-                       help="Determines whether to include cells that do not pass the IQTREE2 composition chi-square test")
+    p_phy.add_argument('--input_format', choices=['fasta', 'standard', 'monopogen'], default='fasta', help='Start from FASTA, standard bundle, or Monopogen directory')
+    p_phy.add_argument('--cell_barcode', default=None, help='Optional selected-cell TSV for standard/Monopogen input')
+    add_filter_options(p_phy)
     p_phy.add_argument("--model", type=str, default="TEST",
                        help="Specifies the model selection option for IQTREE2")
     p_phy.add_argument("--uf_bootstrap_replicates", type=int, default=1000,
@@ -722,7 +652,7 @@ def build_parser() -> argparse.ArgumentParser:
         )
 
     # Required positional arguments
-    p_phy.add_argument("fasta_path", help="")
+    p_phy.add_argument("fasta_path", help="FASTA file or input bundle/Monopogen directory selected by --input_format")
     p_phy.add_argument("output_directory", help="")
     p_phy.add_argument("prefix", help="")
     p_phy.set_defaults(func=run_phylogeny)
@@ -851,7 +781,7 @@ def main(argv: Optional[list[str]] = None) -> int:
     metadata = capture_runtime(args, PROJECT_DIR)
     try:
         args.func(args)
-    except ValueError as exc:
+    except (ValueError, OSError) as exc:
         save_runtime(metadata, args, PROJECT_DIR, success=False)
         parser.error(str(exc))
     except BaseException:

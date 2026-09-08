@@ -82,27 +82,8 @@ def convert_snv_matrix_to_fasta(output_directory, sample_id):
     df = pd.read_csv(merged_snv_mat_path, index_col=0)
     print(f"Matrix size: {df.shape}")
     
-    # 2. Extract Ref and Alt alleles from Variant_ID
-    print("Extracting Ref and Alt alleles from Variant_ID...")
-    variant_info = df.index.to_series().str.split(':').apply(lambda x: pd.Series({
-        'chr': x[0],
-        'pos': x[1],
-        'Ref': x[2],
-        'Alt': x[3]
-    }))
-    df = df.join(variant_info)
-    print("Ref and Alt allele extraction complete.")
-    
-    # 3. Merge variant information with the matrix
-    print("Merging variant information with the matrix...")
-    # Uncomment the following line if you need to drop 'chr' and 'pos' columns
-    # df = df.drop(columns=['chr', 'pos'])
-    
-    # 4. Verify and subset cell barcodes in the matrix
-    print("Verifying and subsetting cell barcodes in the matrix...")
-    cell_barcodes_in_matrix = df.columns.difference(['chr', 'pos', 'Ref', 'Alt'])
-    print(f"Number of cell barcodes present in the matrix: {len(cell_barcodes_in_matrix)}")
-    
+    cell_barcodes_in_matrix = df.columns
+
     # 5. Generate FASTA sequences
     print("Generating FASTA sequences...")
     fasta_entries = []
@@ -111,8 +92,6 @@ def convert_snv_matrix_to_fasta(output_directory, sample_id):
     for cell in cell_barcodes_in_matrix:
         # Extract genotype, Ref, and Alt for each variant in the cell
         genotypes = df[cell]
-        refs = df['Ref']
-        alts = df['Alt']
 
         nucleotides = []
         for variant_id, genotype in genotypes.items():
