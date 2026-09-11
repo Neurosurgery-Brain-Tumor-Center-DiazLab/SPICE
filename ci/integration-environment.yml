@@ -1,0 +1,22 @@
+name: spice-integration
+channels:
+  - conda-forge
+  - bioconda
+dependencies:
+  - python=3.11
+  - pandas=2.2.3
+  - pip
+  - python-build=1.4.0
+  - r-base=4.3.3
+  - r-ape
+  - r-coda
+  - r-janitor
+  - r-posterior=1.6.0
+  - r-dplyr
+  - r-progress
+  - r-phangorn
+  - r-phytools
+  - r-ggplot2=3.5.2
+  - r-ggsci
+  - bioconductor-ggtree=3.10.0
+  - iqtree=2.4.0

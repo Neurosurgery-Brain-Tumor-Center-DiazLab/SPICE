@@ -2,11 +2,12 @@ include SPICE.py VERSION LICENSE CITATION.cff README.md CHANGELOG.md SPICE.png
 include requirements.txt environment.yml
 recursive-include spice_lineage *.py VERSION *.R
 recursive-include tests *.py *.R
-include scripts/check_ci.py scripts/check_package.py scripts/check_ci_dependencies.R
+include scripts/check_ci.py scripts/check_package.py scripts/check_ci_dependencies.R scripts/check_integration.py
 include scripts/monopogen_merge.R scripts/install_R_dependencies.R
 recursive-include examples *.md *.tsv
 recursive-include docs *.md
 recursive-include ci *.yml *.lock *.txt
-include .github/workflows/ci.yml
+include .github/workflows/ci.yml .github/workflows/integration.yml
+recursive-include tests/integration *.md *.tsv *.nwk
 global-exclude *.pyc
 global-exclude __pycache__

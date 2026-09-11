@@ -69,9 +69,14 @@ def inspect_artifacts(wheel, sdist):
         "scripts/monopogen_merge.R", "scripts/install_R_dependencies.R", ".github/workflows/ci.yml",
         "examples/README.md", "examples/standard/matrix.tsv", "examples/standard/cells.tsv",
         "examples/standard/variants.tsv", "ci/environment.yml", "ci/linux-64.lock",
-        "ci/requirements-build.txt",
+        "ci/requirements-build.txt", "ci/integration-environment.yml",
+        "ci/integration-linux-64.lock", "scripts/check_integration.py",
+        ".github/workflows/integration.yml",
     }
-    for pattern in ("docs/*.md", "tests/*.py", "tests/*.R"):
+    for pattern in ("docs/*.md", "tests/*.py", "tests/*.R",
+                    "tests/integration/**/*.py", "tests/integration/**/*.R",
+                    "tests/integration/**/*.md", "tests/integration/**/*.tsv",
+                    "tests/integration/**/*.nwk"):
         source_files.update(p.relative_to(ROOT).as_posix() for p in ROOT.glob(pattern))
     generated = {"PKG-INFO", "setup.cfg"} | {"spice_lineage.egg-info/" + p for p in (
         "PKG-INFO", "SOURCES.txt", "dependency_links.txt", "entry_points.txt",
