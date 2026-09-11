@@ -96,7 +96,10 @@ def capture_runtime(args, root):
         if binary:
             try: info['sha256'] = sha256(binary)
             except OSError as exc: info['hash_error'] = str(exc)
-            if name=='IQ-TREE':info['version_probe'] = probe([binary,'--version'])
+            # Executables records discovery, not execution. Standalone clones
+            # must not launch IQ-TREE, including a provenance-only version probe.
+            if name=='IQ-TREE' and args.command != 'clones':
+                info['version_probe'] = probe([binary,'--version'])
         metadata['executables'][name] = info
     return metadata
 

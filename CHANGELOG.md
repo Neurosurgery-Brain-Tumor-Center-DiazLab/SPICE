@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Add `spice clones --tree TREE --output_directory DIR --prefix SAMPLE` and
+  equivalent legacy-wrapper support. It classifies an existing IQ-TREE Newick
+  tree without executing IQ-TREE, including no provenance-only version probe.
+- Share clone/rooting option registration and the authoritative R execution path
+  with `phylogeny`. Pass the actual inferred tree path or supplied tree as R
+  argument 16; preserve the old 15-argument R form and all scientific parameters,
+  methods, defaults, output names and schemas.
+- Add required fast routing/default/validation/provenance regressions and real
+  installed-wheel combined-versus-standalone equivalence checks using an
+  arbitrary external tree path containing spaces. Reuse the manual-only
+  **SPICE Phase 3 Integration** workflow; required CI is unchanged.
+- Keep 0.2.0 unreleased. No Galaxy wrappers or package/container publication.
+
 - Add real IQ-TREE 2.4.0 / BayesTraits V4.1.3 integration through an external,
   non-editable wheel install, committed synthetic fixtures, strict output/QC/
   provenance assertions, and a dedicated SHA-256-pinned Linux dependency lock.
@@ -14,7 +27,7 @@
   to support output directories with spaces. Original tree fingerprints,
   node identities, log locations and scientific tables are preserved.
   Scientific algorithms/defaults, QC/retry policies and overwrite guards are
-  unchanged. Version remains 0.2.0 (unreleased); no publication or Phase 4 work.
+  unchanged. Version remains 0.2.0 (unreleased); no publication.
 
 
 - Add the local `spice-lineage` wheel/sdist and `spice` console command;

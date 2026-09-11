@@ -16,6 +16,10 @@ Files:
 - `checks.py`: installed CLI, actual output/schema/QC/provenance assertions and
   fast failure checks. It contains no mocked IQ-TREE or BayesTraits execution.
 - `verify_trees.R`: independent tree reading/support/export/conversion checks.
+- `verify_clone_equivalence.R`: clone export count, tip sets, rooted topology and
+  branch lengths compared across combined and standalone paths in both formats.
+  `checks.py` also compares complete tables, per-tip status, partitions and
+  provenance after moving the inferred tree to an arbitrary name with spaces.
 
 This directory intentionally has no `__init__.py`: the expensive real suite
 runs only through its explicit runner, separate from normal unittest discovery.

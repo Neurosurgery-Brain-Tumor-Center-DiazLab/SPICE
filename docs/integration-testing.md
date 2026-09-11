@@ -1,4 +1,4 @@
-# Real external-tool integration (Phase 3)
+# Real external-tool integration (Phases 3 and 4)
 
 This suite validates the installed SPICE package against **IQ-TREE 2.4.0** and
 **BayesTraits V4.1.3** on Linux x86_64. It uses only committed, synthetic data.
@@ -96,6 +96,28 @@ real support labels, rooting/selection metadata, trusted membership, readable
 NEXUS/Newick exports and executable provenance. No exact stochastic tree,
 branch length or support percentage is required.
 
+Each real phylogeny run is followed by installed `spice clones` using an identical
+copy of its IQ-TREE tree at `external IQ-TREE input/renamed supported tree.nwk`.
+The separate `clones with spaces` output uses the same sample and clone/rooting
+settings. It runs despite an invalid `IQTREE2_BIN` inference setting; the required
+fast subprocess regression separately forbids IQ-TREE dispatch, including version
+probes. The real suite substitutes no inference executable.
+
+The comparison requires identical parsed rooting/selection metadata and complete
+branch-cut tables, clone partitions up to label permutation, and per-tip trusted
+status and unassigned reasons. Independent R checks match clone exports by tip
+sets and compare rooted topology and branch lengths in both Newick and NEXUS,
+including the number of exportable clones. The Phylo file inventory and PDF
+headers are checked; PDF bytes, timestamps and differing command provenance are
+not compared. The input copy must remain unchanged, with no inference artifacts
+created in the standalone output. Installed missing-tree and absent-outgroup
+failures must retain failed runtime JSON.
+
+`clones` provenance includes the original tree path, every shared setting, R
+versions and installed source hashes. Its executable inventory still records
+discoverable paths/hashes but omits the IQ-TREE version probe. Discovery does not
+mean the command executed that tool. See [clones.md](clones.md).
+
 The separate [ancestry fixture](../tests/integration/fixtures/ancestry/README.md)
 has twelve tips, eleven internal nodes and two states with six tips each.
 Its reversed state-table order checks reconciliation. Two chains use 50,000
@@ -133,8 +155,7 @@ commits, no shared environment cache, no secrets and a 75-minute timeout.
 Allow roughly 5–15 minutes including installation, subject to runner/network
 speed; observed local timings belong in the engineering handoff.
 
-Success means the full runner exits zero with zero skipped tools/tests, both
-real-tool paths and all three permutations passing. Inspect the job log and
+Success means the full runner exits zero with zero skipped tools/tests, the combined and standalone clone paths, ancestry and all three permutations passing. Inspect the job log and
 `result.json`; the `spice-integration-text-evidence` artifact retains selected
 text logs, QC tables and provenance for 14 days, including failure evidence.
 Its explicit file allowlist excludes binaries, wheels, archives and environments.
@@ -162,6 +183,7 @@ the installed-wheel Newick fixture verify preservation.
 
 The version remains 0.2.0 (unreleased); this compatibility correction is recorded
 in CHANGELOG.md. Scientific algorithms/defaults, tables and overwrite guards
-are unchanged. Phase 4's standalone clone command has not started. No SPICE,
+are unchanged. Phase 4 adds only the shared clone interface and explicit R tree
+path; the R scientific body is unchanged. No SPICE,
 IQ-TREE or BayesTraits software is published; Bioconda/container/PyPI/Galaxy
 publication and scientist-led method validation remain out of scope.

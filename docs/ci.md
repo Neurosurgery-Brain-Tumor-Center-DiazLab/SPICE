@@ -50,12 +50,20 @@ this job's execution scope. CLI help/version do not establish their availability
   functions over synthetic draws and tables. Retry tests replace the MCMC runner;
   no BayesTraits chain is executed.
 - Top-level help, version compared with VERSION, and help for every parser-defined
-  subcommand (currently import-monopogen, filter, phylogeny, ancestry, plasticity,
+  subcommand (currently import-monopogen, filter, phylogeny, clones, ancestry, plasticity,
   summarize).
 
 The existing route forwarding test mocks IQ-TREE and BranchSupportCut.R, and the
 release test uses a shell echo fixture. These are interface tests, not real tree
 inference or clone classification. This job is not a full biological-pipeline test.
+
+The Phase 4 fast tests cover `clones` registration/help, required inputs, prefix
+safety, missing/unreadable trees, manual and automatic settings, rooting precedence,
+all thirteen defaults against reviewed Phase 3 values, explicit R argument routing,
+paths containing spaces, IQ-TREE-before-clones delegation and success/failure
+provenance. Subprocess dispatch assertions reject any IQ-TREE execution from
+`clones`, including its version probe. These mocked routing tests are not real
+external-tool validation; real equivalence remains in the manual suite.
 
 ## Dependency maintenance
 
