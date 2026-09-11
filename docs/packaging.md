@@ -16,11 +16,13 @@ from `spice_lineage`. Active R resources are:
 | import-monopogen | matrix_bridge.R |
 | filter | matrix_bridge.R, mutation_filter.R |
 | phylogeny | BranchSupportCut.R, plus filtering files for count input |
+| clones | BranchSupportCut.R |
 | ancestry | ancestry_core.R, spice_ancestry_utils.R |
 | plasticity | plasticity_core.R, spice_ancestry_utils.R, spice_plasticity_utils.R |
 | summarize | None |
 
-The seven R files were moved byte-for-byte. Their sibling source relationships
+The seven R files were moved byte-for-byte in Phase 2. Subsequent Phase 3 input
+plumbing and the Phase 4 explicit-tree argument are documented in the changelog. Their sibling source relationships
 already work with absolute script paths. `paths.py` resolves the shared R
 directory relative to the package's file location; pip installs wheel resources
 as real files. Running directly from a zipped archive is not supported.

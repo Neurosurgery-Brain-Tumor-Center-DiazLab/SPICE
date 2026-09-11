@@ -1,199 +1,149 @@
-# SPICE engineering handoff — Phase 3
+# SPICE engineering handoff - Phase 4
 
-## Starting state and scope
+## Starting state and mandatory gate
 
-Checkout: `/home/aaron/SPICE`, remote
+Checkout `/home/aaron/SPICE`, remote
 `https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE.git`.
-The clean feature branch `codex/phase3-integration-tests`, HEAD and fetched
-origin/main all started at `10a73f62dbd9817967f7b971af21059e945a6b29`.
-No intervening main changes or applicable AGENTS.md were found.
-No reset, stash, discarded work, rebase or main-branch commit was used.
+Work started on clean `codex/phase4-clones-command` at fetched `origin/main`
+**d93a164ea0250c5f8985753d9205f3e0ef34b64a**. Phase 3 is present and both hosted
+checks were observed successful on that exact commit before any Phase 4 edits:
 
-Phase 3 adds real-tool integration of the installed wheel. Phase 4 has not
-started; no standalone clone command, scientific redesign, PyPI/Bioconda/
-container publication or Galaxy work is included. The prior Phase 2 handoff
-is retained in Git at the starting commit.
+- [SPICE Phase 3 Integration, 34584742908](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/actions/runs/34584742908).
+- [SPICE CI, 34584009844](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/actions/runs/34584009844).
 
-## Implementation and reviewed boundary
+No applicable AGENTS.md was found. No reset, stash, rebase, discarded local work,
+main-branch commit, force push or merge is part of this phase. The Windows sandbox
+helper failed to initialize; approved WSL commands performed the same scoped work.
+The Phase 3 handoff remains available in Git at the starting main commit.
 
-- `scripts/check_integration.py`: Linux-only, zero-skip runner; exact tool
-  version checks, official BayesTraits download and pre-execution SHA-256
-  verification, fresh wheel/venv, constrained runtime dependencies, neutral
-  external cwd, logs/timings, and cleanup of downloaded executables.
-- `tests/integration/`: explicit synthetic bundles, installed CLI assertions,
-  independent R tree checks, and failure checks. No real-tool mocks.
-- `ci/integration-environment.yml`, `ci/integration-linux-64.lock`: separate
-  210-package integration environment. The explicit SHA-256 lock was recreated
-  in a second isolated prefix before successful real-tool validation.
-- `.github/workflows/integration.yml`: **SPICE Phase 3 Integration**,
-  workflow_dispatch only, Ubuntu 24.04, read-only contents, pinned Action SHAs,
-  75-minute timeout, no secrets, and an explicit text-only artifact allowlist.
-- `MANIFEST.in`, `scripts/check_package.py`: include and verify integration
-  development material in the sdist. Wheel contents stay unchanged.
-- README, CHANGELOG, docs/ci.md, docs/packaging.md and
-  [integration-testing.md](integration-testing.md): execution, checksums,
-  fixture settings and scientific limits.
+## Architecture and compatibility
 
-Only `spice_lineage/resources/r/spice_ancestry_utils.R` changes production code:
-
-1. Real V4.1.3 rejected the original Newick subprocess input with
-   `Tree file does not have a valid nexus tag`. A small boundary helper
-   writes an attempt-local NEXUS with 17-digit branch lengths; existing NEXUS
-   passes through. Original parsed-tree node IDs and input fingerprints remain
-   authoritative. The real Newick wheel test failed before this fix; an
-   additional fast file round-trip regression verifies root, topology, tip
-   order and branch lengths.
-2. Real V4.1.3 rejected an absolute `LogFile` path containing spaces.
-   Each chain now runs from its own directory and uses its MCMC basename;
-   expected absolute log paths remain unchanged. All inputs/executable paths
-   are resolved before changing cwd, which is restored on exit. The real
-   space-containing path assertion failed before the fix and now verifies
-   complete chain logs and explicit local LogFile commands.
-
-No variant filtering/count/FASTA semantics, site order/multiplicity, IQ-TREE
-defaults/support order, clone algorithm/selection/rooting, BayesTraits model/
-priors/MCMC defaults/seeds/retry policy, QC policy/threshold defaults,
-posterior policy, state order, transition classification, permutation method,
-P-value/BH calculation, scientific tables or overwrite safeguards changed.
-Version remains **0.2.0 (unreleased)**; the engineering fixes are documented
-without creating a new public release.
-
-An external runtime issue was also diagnosed: the official binary's static
-OpenBLAS spawned threads that failed WSL1 cleanup (`munmap` EINVAL), including
-after completed inference. Test-only OPENBLAS_NUM_THREADS=1 and OMP_NUM_THREADS=1
-resolve it and bound resources. No exit code is ignored; version probes and
-all real inference must exit zero.
-
-## Synthetic fixtures and test-only settings
-
-Phylogeny: **15 cells x 700 variants**, filtered to exactly **13 x 696**.
-Ref plus A1-A4, B1-B4, C1-C4 remain; LowSupport and Excluded are removed.
-Four all-REF sites are removed. 240 constant, 60 ingroup, and 132 sites per
-four-cell group provide transparent strong signal, sister-pair and private
-variation. Ref is the explicit outgroup. The trusted partition must be the
-three four-cell sets, allowing arbitrary clone labels; Ref is unassigned.
-
-One thread, JC, 1000 UFBoot/1000 SH-aLRT replicates, manual incoming-edge
-cutoff 0.10, existing 90/75 support cutoffs and minimum clone size two.
-Complete matrix/site/cell/FASTA assertions precede output metadata, partition,
-tree readability and provenance checks. No exact stochastic tree is required.
-
-Ancestry: **12 tips, 11 internal nodes, 22 positive-length edges**, two states
-with six tips each. Reversed annotation rows test reconciliation; state order
-(Progenitor=1, Differentiated=2) differs from alphabetical numeric encoding.
-The input is independent of IQ-TREE output.
-
-Two chains, 50,000 iterations, burn-in 10,000, sample period 100 (400 retained
-draws/chain), no stepping stones; R-hat <1.2, bulk/tail ESS >=20, recorded
-legacy ESS/PSRF cutoffs 20/1.2, posterior cutoff 0.5, one retry allowed.
-Existing exponential hyperprior and seed derivation remain unchanged.
-Plasticity uses matching settings and exactly three permutations with the
-greater alternative and shuffle seed 12345. Three permutations test execution;
-they are not a calibrated significance/power benchmark.
-
-## Observed local results
-
-Host: Ubuntu 20.04 under WSL1, Linux x86_64, glibc 2.31.
-Windows sandbox process setup failed; authorized WSL commands ran directly
-without modifying the system environment.
-
-Both pre-edit baselines passed:
-- Phase 1: 21 discovered/run, zero skips/failures/errors, all R QC and CLI checks.
-- Phase 2: wheel/sdist inspection plus five non-editable-install checks.
-
-After the integration fixes, both passed again with the added file conversion
-regression. `git diff --check` and actionlint for both workflows passed.
-The normal ci.yml, Phase 1 lock, CLI defaults and VERSION files are unchanged.
-
-The full real suite first passed at `/tmp/spice-phase3-integration-05` in
-**133.53 seconds**, including fresh wheel installation and three permutations.
-The final repeated validation at `/tmp/spice-phase3-final-integration` passed
-**three complete runs, zero skips, in 170.72 seconds total**. Seed bases were
-12345, 13345 and 14345; each used independent IQ-TREE inference and three
-BayesTraits-backed permutation replicates. All clone partitions and ancestry/
-permutation QC assertions passed. Optional summary and deterministic failure
-checks passed. These times exclude environment installation.
-
-The final wheel:
-`/tmp/spice-phase3-final-integration/dist/spice_lineage-0.2.0-py3-none-any.whl`
-
-SHA-256:
-`0d0689329260b7e74df02d1381070ddc4903a8736a482ec1471056d4f4b6d99d`
-
-Installed executable:
-`/tmp/spice-phase3-final-integration/venv/bin/spice`
-
-Verified import:
-`/tmp/spice-phase3-final-integration/venv/lib/python3.11/site-packages/spice_lineage`
-
-Pip's non-editable wheel URL/hash and runtime source hashes were checked.
-Runtime records explicitly report Git unavailable and include real executable
-paths/hashes, IQ-TREE version output and retained BayesTraits banners.
-
-## Exact external/runtime identity
-
-- IQ-TREE **2.4.0**, from the SHA-256-pinned Bioconda package.
-  Path: `/home/aaron/SPICE/.local-ci/integration-locked-env/bin/iqtree2`.
-  Executable SHA-256:
-  `77f5aaabea6427da0d9cc1c32e390f3b5bfb4916ce673be1c9bd95c141f22b82`.
-- BayesTraits **V4.1.3 (Sep 27 2024)**, official University of Reading HTTPS
-  [Linux archive](https://www.evolution.reading.ac.uk/BayesTraitsV4.1.3/Files/BayesTraitsV4.1.3-Linux.tar.gz).
-  Archive SHA-256:
-  `cf0f5d9afa6ab74ae5aa6f386d1b3a4bc20d25643878aecddab459259b030674`.
-  Binary SHA-256:
-  `711024887c5484d5f6e768313b1aafea01c83705234e9a1172d5ed8e8f33bb4d`.
-  Final run path `/tmp/spice-bayestraits-2jd7m3yv/BayesTraitsV4` was deleted after
-  execution. Version probe and every inference returned zero.
-- Python **3.11.16**, R **4.3.3**; locked integration pandas **2.2.3**,
-  NumPy **2.4.6**.
-- R packages: ape **5.8-1**, coda **0.19-4.1**, janitor **2.2.1**,
-  posterior **1.6.0**, dplyr **1.1.4**, progress **1.2.3**,
-  phangorn **2.12.1**, phytools **2.5.2**, ggplot2 **3.5.2**,
-  ggtree **3.10.0**, ggsci **3.2.0**, base parallel **4.3.3**.
-
-## Commands and retained evidence
-
-From `/home/aaron/SPICE`:
+`add_clone_options` registers the same thirteen reviewed options/defaults for
+`phylogeny` and `clones`. `run_clone_classification` holds the single authoritative
+Python validation, outgroup precedence and R dispatch path. `run_clones` checks
+that its explicit tree is a readable file, then calls that function.
+`run_phylogeny` retains filtering, alignment creation, model/replicate/thread
+settings, IQ-TREE execution and its script output, then passes the actual
+`<fasta_path>.treefile` from IQ-TREE's `-s` alignment to the same function.
+The historical output/prefix FASTA layout remains supported; external FASTA
+paths now follow the actual IQ-TREE output location.
 
 ```bash
-MM=.local-ci/bootstrap/bin/micromamba
-$MM run -p "$PWD/.local-ci/locked-env" python3 scripts/check_ci.py
-$MM run -p "$PWD/.local-ci/locked-env" python -m pip install -r ci/requirements-build.txt
-$MM run -p "$PWD/.local-ci/locked-env" python3 scripts/check_package.py --work-dir /tmp/spice-phase3-final-package
-$MM create -y -p "$PWD/.local-ci/integration-env" -f ci/integration-environment.yml --strict-channel-priority
-$MM create -y -p "$PWD/.local-ci/integration-locked-env" -f ci/integration-linux-64.lock
-$MM run -p "$PWD/.local-ci/integration-locked-env" python scripts/check_integration.py --work-dir /tmp/spice-phase3-final-integration --repeat 3
+spice clones --tree "/path/to/supported tree.treefile" \
+  --output_directory /path/to/output --prefix SAMPLE
+# Both entry points use the same main/parser:
+python SPICE.py clones --tree "/path/to/supported tree.treefile" \
+  --output_directory /path/to/output --prefix SAMPLE
+```
+
+The input contract is supported IQ-TREE Newick with **SH-aLRT/UFBoot** labels.
+No NEXUS input converter or inference options are added. Missing/unreadable files
+fail before R; scientific rooting/support/selection errors remain R's existing
+errors. See [clones.md](clones.md) for every option/default and the full output
+inventory traced before refactoring.
+
+The R interface appends explicit tree path as **argument 16**. Arguments 1-15
+retain their positions and default handling. Direct old invocations still derive
+`<output_directory><sample_id>.fasta.treefile` if argument 16 is absent. Both
+Python routes always provide the explicit path. The only executable R change is
+that treefile assignment, plus two explanatory comments. All remaining bytes of
+`BranchSupportCut.R` are unchanged, including support parsing, rooting, sweep,
+ARI, stable-window and trusted-cluster definitions, automatic selection, minimum
+size, clone membership/IDs, tree exports, plots and table schemas.
+
+Provenance uses existing runtime JSON and source/environment hashing. Executable
+paths/hashes describe discovery, not an executed-tool ledger. `clones` alone
+omits the IQ-TREE version probe so it does not execute IQ-TREE even for metadata.
+Other commands retain their provenance behavior. Success/failure, supplied tree
+and clone parameters, installed source hashes and R metadata are tested.
+
+## Validation design and pre-edit results
+
+Mandatory baselines passed before edits:
+
+- Phase 1: **21 tests**, zero skips/failures/errors; all real R QC/filter and CLI
+  checks pass. Log `/tmp/spice-phase4-baseline-ci.log`.
+- Phase 2: exact wheel/sdist content checks and **five** external installed-wheel
+  tests pass. Evidence `/tmp/spice-phase4-baseline-package`.
+- Real integration: **pass, zero skips, 121.10 seconds**, including real IQ-TREE
+  2.4.0 / R / BayesTraits V4.1.3, ancestry, all three permutations, summary and
+  expected failure paths. Evidence `/tmp/spice-phase4-baseline-integration`.
+
+The new fast regressions cover registration and legacy help, required arguments,
+prefix safety, unreadable/missing inputs, forbidden inference options, every
+Phase 3 clone default, invalid selection/rooting values, outgroup precedence,
+R argument order and paths with spaces, inference-first shared delegation, and
+IQ-TREE failure isolation. A full `main()` subprocess whitelist includes runtime
+capture and forbids any IQ-TREE invocation, including `--version`, for both
+successful and failed clone analyses. Mocked routing tests do not establish
+external-tool correctness.
+
+The real installed-wheel runner now copies the inferred tree to
+`external IQ-TREE input/renamed supported tree.nwk`, runs standalone clones in
+`clones with spaces` with identical clone settings, then compares full parsed
+rooting/selection/sweep tables and per-tip membership/trust/status. Clone names
+are canonicalized by membership. Independent real R compares export counts,
+tip sets, rooted topology, branch lengths and root edges in both Newick and
+NEXUS. The input must be unmodified and the standalone output must lack inference
+artifacts. PDF headers/layout are checked, not PDF bytes. An invalid IQTREE2_BIN
+setting is ignored by clones; installed missing-file and scientific outgroup
+failures produce failed provenance. All original ancestry/plasticity checks remain.
+
+## Final local results
+
+- Required source/R/CLI checks: **35 discovered/run, zero skips/failures/errors**.
+  This includes fourteen new focused clone regressions and all prior tests.
+  Evidence `/tmp/spice-phase4-reviewed-ci.log`.
+- Package: **23 wheel files, 84 sdist files**, exact content checks and **five
+  installed-wheel tests passed**. Evidence `/tmp/spice-phase4-reviewed-package`.
+  Parser discovery exercised installed `spice clones --help` as well as every
+  existing command; source checks exercised legacy `python SPICE.py clones` help.
+- Full real integration: **pass, zero skips, 199.95 seconds**.
+  Combined-versus-standalone complete tables, partition/trust/status, both tree
+  formats, arbitrary filename/spaces, runtime success/failure, ancestry,
+  plasticity, all three permutations and summary passed. Evidence
+  `/tmp/spice-phase4-reviewed-integration/result.json`. Downloaded BayesTraits
+  was verified removed after the run.
+- Installed integration executable:
+  `/tmp/spice-phase4-reviewed-integration/venv/bin/spice`.
+  Import:
+  `/tmp/spice-phase4-reviewed-integration/venv/lib/python3.11/site-packages/spice_lineage`.
+  Wheel SHA-256: `91fa16d668368ba73203eb5093b7c31a80560e4bf85a94da934b793124c31870`.
+- `git diff --check` and actionlint passed for both unchanged workflows. A direct
+  parser comparison against the starting Phase 3 source confirmed all existing
+  command flags, defaults, types, choices, help and requiredness are unchanged.
+  An AST comparison confirmed the filtering/IQ-TREE body before clone dispatch
+  is unchanged. Evidence `/tmp/spice-phase4-compatibility.json`.
+- Byte comparison of the production R file confirms that only the explicit-tree
+  assignment and its two comments differ from Phase 3. No scientific code change.
+
+## Reproduce and delivery
+
+From the checkout, using the existing locked environments:
+
+```bash
+.local-ci/bootstrap/bin/micromamba run -p "$PWD/.local-ci/locked-env" python3 scripts/check_ci.py
+.local-ci/bootstrap/bin/micromamba run -p "$PWD/.local-ci/locked-env" python -m pip install -r ci/requirements-build.txt
+.local-ci/bootstrap/bin/micromamba run -p "$PWD/.local-ci/locked-env" python3 scripts/check_package.py --work-dir /tmp/spice-phase4-reviewed-package
+.local-ci/bootstrap/bin/micromamba run -p "$PWD/.local-ci/integration-locked-env" python3 scripts/check_integration.py --work-dir /tmp/spice-phase4-reviewed-integration
 .local-ci/bootstrap/actionlint .github/workflows/ci.yml .github/workflows/integration.yml
 git diff --check
 ```
 
-Work directories must be new; choose another suffix when reproducing.
-The full exact subprocess argument arrays, exit codes and durations are in
-`/tmp/spice-phase3-final-integration/result.json` and
-`external tests with spaces/commands.json`. Each run retains tool/command logs,
-QC attempt tables, ancestry, plasticity and runtime provenance. The original
-baseline and subsequent validation logs use `/tmp/spice-phase3-*` names.
-No environment, binary, cache or ad hoc inference output is tracked.
+Use new work-directory names on reruns. Generated artifacts and logs remain in
+external temporary directories or ignored `.local-ci`; no binaries, environments,
+IQ-TREE outputs, caches or PDFs should be staged. Package modules/resources stay
+unchanged in count; test/docs glob allowlists include the new files without a
+generic top-level scripts package.
 
-## Delivery and remaining hosted validation
+The final PR records observed local/hosted results and commit IDs. The existing
+**Phase 1 required checks** job name and normal PR workflow are unchanged.
+**SPICE Phase 3 Integration** remains workflow_dispatch only and non-required.
+Dispatch `integration.yml` on `codex/phase4-clones-command` after opening the PR,
+and report only observed hosted results. Do not merge the PR.
 
-The intended PR targets main and must not be merged by this task.
-The PR description records final commit IDs, PR URL and actually observed
-hosted statuses; local success does not establish hosted success.
-
-The separate manual workflow is not required for merge. Read-only inspection
-of the active Protect main ruleset confirmed that its only required context
-remains **Phase 1 required checks**. No ruleset was changed.
-
-A first workflow_dispatch needs the workflow registered on the default branch.
-At implementation time only SPICE CI was registered; this new manual workflow
-was absent from main. The agent must attempt branch dispatch and record the
-actual response in the PR. If GitHub refuses it, maintainer registration is
-required before hosted validation can finish; no push/PR trigger should be
-added as a workaround. The normal PR gate must still be observed separately.
-
-Recommended next step: review the feature PR and its required CI, resolve any
-initial manual-workflow registration requirement, then run **Actions ->
-SPICE Phase 3 Integration -> Run workflow** against the reviewed branch.
-No scientific-method defect was established. Scientist-led biological validation
-remains in maintainer-decisions.md. **Phase 4 has not started.**
+Version remains **0.2.0 unreleased**, following the established changelog policy.
+Scientific algorithms, defaults and output names/schemas are unchanged. Phase 4
+includes no Galaxy XML, Planemo workflow, Tool Shed work, Bioconda/container/PyPI
+publication or Phase 5 work. Review the Phase 4 PR and its real equivalence
+results before separately authorizing later publication and Galaxy phases.

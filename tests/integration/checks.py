@@ -1,4 +1,5 @@
 """Copied outside Git and executed only by the freshly installed wheel's Python."""
+import argparse
 import csv
 from collections import Counter, defaultdict
 import hashlib
@@ -28,6 +29,11 @@ ANCESTRY = ["--mcmc_chains", "2", "--iterations", "50000", "--burnin", "10000",
 PERM = ["--perm_replicates", "3", "--perm_chains", "2", "--perm_iterations", "50000",
         "--perm_burnin", "10000", "--perm_sample_period", "100", "--threads", "1",
         "--sig_direction", "greater", "--seed", "12345", *QC]
+
+
+# The same explicit fixture options are used for inference + clones and clones alone.
+CLONE_OPTIONS = ["--clone_cut_mode", "manual", "--clone_cut_threshold", "0.10",
+                 "--min_tips", "2", "--outgroup", "Ref"]
 
 
 def require(ok, message):
@@ -101,8 +107,12 @@ def provenance(path, command, success=True):
         for field in ("path", "sha256"):
             require(record["executables"][name][field] == EXPECTED[name][field],
                     f"Wrong executable provenance: {name} {field}")
-    require("version 2.4.0" in record["executables"]["IQ-TREE"]["version_probe"]["output"],
-            "Wrong IQ-TREE provenance version")
+    if command == "clones":
+        require("version_probe" not in record["executables"]["IQ-TREE"],
+                "Standalone clones must not execute even an IQ-TREE version probe")
+    else:
+        require("version 2.4.0" in record["executables"]["IQ-TREE"]["version_probe"]["output"],
+                "Wrong IQ-TREE provenance version")
     if success and command in ("ancestry", "plasticity"):
         require(record["executables"]["BayesTraits"].get("recorded_banner") ==
                 EXPECTED["BayesTraits"]["banner"], "BayesTraits banner not retained")
@@ -116,8 +126,7 @@ def phylogeny(out):
                 "--input_format", "standard", "--min_alt_cells_per_snv", "1",
                 "--min_snvs_per_cell", "1", "--threads", "1", "--model", "JC",
                 "--uf_bootstrap_replicates", "1000", "--sh_alrt_replicates", "1000",
-                "--clone_cut_mode", "manual", "--clone_cut_threshold", "0.10",
-                "--min_tips", "2", "--outgroup", "Ref"], out / "command.log")
+                *CLONE_OPTIONS], out / "command.log")
     require("IQ-TREE2 finished successfully." in text and
             "BranchSupportCut.R finished successfully." in text, "External steps did not complete")
     original = table(FIXTURES / "phylogeny/standard/matrix.tsv")
@@ -174,6 +183,80 @@ def phylogeny(out):
     run(["Rscript", "--vanilla", HERE / "verify_trees.R", out], out / "tree-validation.log")
     provenance(out / "synthetic.runtime.json", "phylogeny")
     return groups
+
+
+def clone_partition(path):
+    rows = table(path)
+    require(len({r["cell_id"] for r in rows}) == len(rows), "Duplicate clone assignment tips")
+    groups = defaultdict(set)
+    for row in rows:
+        require(set(row) == {"cell_id", "clone_id", "clone_status", "in_trusted_cluster"},
+                "Clone assignment schema changed")
+        if flag(row["in_trusted_cluster"]):
+            require(row["clone_id"] != "NA" and row["clone_status"] == row["clone_id"],
+                    "Trusted clone ID/status disagree")
+            groups[row["clone_id"]].add(row["cell_id"])
+        else:
+            require(row["clone_id"] == "NA" and row["clone_status"] in ("small", "untrusted", "none"),
+                    "Unassigned tip status changed")
+    # Canonical membership identifies a clone regardless of its arbitrary label.
+    return {r["cell_id"]: (frozenset(groups[r["clone_id"]]), "assigned", True)
+            if flag(r["in_trusted_cluster"]) else (None, r["clone_status"], False) for r in rows}
+
+
+def clones(out, combined):
+    from spice_lineage.cli import add_clone_options
+    out.mkdir()
+    external = out.parent / "external IQ-TREE input"
+    external.mkdir()
+    tree = external / "renamed supported tree.nwk"
+    shutil.copyfile(combined / "synthetic.fasta.treefile", tree)
+    before = tree.read_bytes()
+    # An invalid inference configuration would make iqtree2_command fail. The
+    # standalone path must ignore it. Available executables remain discoverable
+    # for provenance; no real inference executable is mocked or substituted.
+    env = dict(os.environ, IQTREE2_BIN=str(out / "not installed IQ-TREE"))
+    text = run([SPICE, "clones", "--tree", tree, "--output_directory", out,
+                "--prefix", "synthetic", *CLONE_OPTIONS], out / "command.log", env=env)
+    require("BranchSupportCut.R finished successfully." in text, "Standalone R step incomplete")
+    require(tree.read_bytes() == before, "Standalone command modified input tree")
+    require(not list(out.glob("*.treefile")) and not list(out.glob("*_iqtree2.sh")) and
+            not list(out.glob("*.iqtree")) and not list(out.glob("*.fasta")),
+            "Standalone clones generated inference artifacts")
+    for name in ("synthetic.rooting_info.tsv", "synthetic.clone_cut_selection.tsv",
+                 "branch_length_cut_analysis.tsv"):
+        require(table(out / "Phylo" / name) == table(combined / "Phylo" / name),
+                f"Combined/standalone table mismatch: {name}")
+    assignment = "Clone/synthetic.clone_assignment.tsv"
+    require(clone_partition(out / assignment) == clone_partition(combined / assignment),
+            "Combined/standalone partition or per-tip trust/status mismatch")
+    require({p.name for p in (out / "Phylo").iterdir()} ==
+            {p.name for p in (combined / "Phylo").iterdir()}, "Phylo output layout changed")
+    for path in (out / "Phylo").glob("*.pdf"):
+        require(path.read_bytes().startswith(b"%PDF"), f"Missing PDF output: {path}")
+    run(["Rscript", "--vanilla", HERE / "verify_clone_equivalence.R", combined, out],
+        out / "clone-equivalence.log")
+    record = provenance(out / "synthetic.runtime.json", "clones")
+    require(record["parameters"]["tree"] == str(tree), "Explicit tree absent from provenance")
+    original = provenance(combined / "synthetic.runtime.json", "phylogeny")
+    parser = argparse.ArgumentParser()
+    add_clone_options(parser)
+    for name in vars(parser.parse_args([])):
+        require(record["parameters"][name] == original["parameters"][name],
+                f"Combined/standalone clone setting differs: {name}")
+    # Exercise the existing scientific rooting error and a missing file through
+    # the installed command, including failed runtime records.
+    bad = out / "missing-outgroup"
+    run([SPICE, "clones", "--tree", tree, "--output_directory", bad, "--prefix", "bad",
+         "--clone_cut_mode", "manual", "--clone_cut_threshold", "0.10", "--outgroup", "AbsentTip"],
+        out / "missing-outgroup.log", failed="outgroup tip(s) were not found in the tree", env=env)
+    provenance(bad / "bad.runtime.json", "clones", False)
+    missing = out / "missing-tree"
+    run([SPICE, "clones", "--tree", external / "absent.nwk", "--output_directory", missing,
+         "--prefix", "bad"], out / "missing-tree.log", failed="IQ-TREE tree not found", env=env)
+    provenance(missing / "bad.runtime.json", "clones", False)
+    print("PASS: standalone arbitrary tree path; complete tables, partitions, tip trust, "
+          "clone exports and provenance equivalent", flush=True)
 
 
 def chains(out, prefix):
@@ -349,15 +432,17 @@ def main():
         out = HERE / f"run_{i:02d}"
         out.mkdir()
         phylogeny(out / "phylogeny with spaces")
+        clones(out / "clones with spaces", out / "phylogeny with spaces")
         anc = ancestry(out / "ancestry with spaces", 12345 + (i-1)*1000)
         plasticity(out / "plasticity with spaces", anc, 12345 + (i-1)*1000)
         if i == 1:
             negative(out / "negative", anc)
     report = {"status": "pass", "skipped": 0, "repeats": EXPECTED["repeats"],
               "spice": str(SPICE), "import": str(PACKAGE_DIR),
+              "clone_equivalence": "pass", "arbitrary_tree_path": "pass",
               "IQ-TREE": EXPECTED["IQ-TREE"], "BayesTraits": EXPECTED["BayesTraits"], "commands": COMMANDS}
     (HERE / "results.json").write_text(json.dumps(report,indent=2))
-    print("PASS: IQ-TREE / BranchSupportCut / ancestry / 3 permutations / summary / failure paths",flush=True)
+    print("PASS: IQ-TREE / standalone clone equivalence / ancestry / 3 permutations / summary / failure paths",flush=True)
 
 
 if __name__ == "__main__":

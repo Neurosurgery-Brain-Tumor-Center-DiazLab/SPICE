@@ -11,6 +11,7 @@ SPICE combines somatic SNV filtering, phylogenetic inference and subclone classi
 - [Input files](#input-files)
 - [Somatic SNV filtering](#somatic-snv-filtering)
 - [Phylogeny and subclone classification](#phylogeny-and-subclone-classification)
+- [Standalone clone classification](#standalone-clone-classification)
 - [Ancestral state estimation](#ancestral-state-estimation)
 - [Cellular plasticity](#cellular-plasticity)
 - [External lineage example](#external-lineage-example)
@@ -42,6 +43,7 @@ Use Python **3.10 or later** (the IQ-TREE helper uses `int | None` annotations),
 | Python CLI | `pandas` | Imported by the matrix and filtering helpers for all subcommands |
 | `filter` | R: `dplyr`, `progress`, `parallel` | Merge chromosome matrices, select cells/variants, parse read counts |
 | `phylogeny` | IQ-TREE 2; R: `ape`, `phangorn`, `phytools`, `ggplot2`, `ggtree`, `ggsci` | Tree inference, rooting, clone cutting, tree visualization |
+| `clones` | R: `ape`, `phangorn`, `phytools`, `ggplot2`, `ggtree`, `ggsci`; no IQ-TREE executable | Classify clones from an existing supported IQ-TREE Newick tree |
 | `ancestry` | BayesTraits; R: `ape`, `coda`, `janitor`, `posterior` | MultiState MCMC, log parsing, ESS/PSRF, node posteriors |
 | `plasticity` | R: `ape`, `coda`, `janitor`, `posterior`; BayesTraits for permutations | Edge classification and permutation ancestry |
 | R runtime | `parallel`, `stats`, `utils`, `tools`, base graphics | Included with R; no separate installation |
@@ -120,6 +122,7 @@ BayesTraits resolution tries `--bayestraits_bin`, then `BAYESTRAITS_BIN`, then `
 spice import-monopogen --help
 spice filter --help
 spice phylogeny --help
+spice clones --help
 spice ancestry --help
 spice plasticity --help
 spice summarize --help
@@ -128,10 +131,12 @@ Rscript -e 'p <- c("dplyr","progress","ape","phangorn","phytools","ggplot2","ggt
 
 ### Real external-tool integration checks
 
-The separate [Phase 3 integration suite](docs/integration-testing.md) runs real
+The separate [Phase 3/4 integration suite](docs/integration-testing.md) runs real
 IQ-TREE 2.4.0, BranchSupportCut.R and BayesTraits V4.1.3 through a fresh,
 non-editable wheel installation outside the checkout. All fixtures are synthetic;
-this validates software integration, not biological accuracy.
+this validates software integration, not biological accuracy. It also checks that
+standalone `clones` and combined `phylogeny` give equivalent clone results from
+the same inferred tree after moving it to an arbitrary path containing spaces.
 
 After creating the dedicated locked Linux environment:
 
@@ -401,7 +406,9 @@ IQ-TREE2. They accept the filtering parameters/defaults above and optional
 and auto/manual clone-cut parameters below are unchanged. The default remains
 midpoint; use `--outgroup` for a biologically justified root when available.
 
-For the existing separate FASTA route, store the alignment as `<output_directory>/<prefix>.fasta` so that IQ-TREE produces the `<prefix>.fasta.treefile` consumed by clone cutting:
+For the separate FASTA route, IQ-TREE writes `<fasta_path>.treefile` beside the
+input alignment. SPICE passes that actual path to clone classification. The
+historical `<output_directory>/<prefix>.fasta` layout remains supported:
 
 ```bash
 cp results/sample/sample.SNV_mat.filter.fasta results/sample/sample.fasta
@@ -458,6 +465,42 @@ python3 SPICE.py phylogeny results/manual/sample.fasta results/manual/ sample \
 | `Phylo/*.pdf` | Rooted trees, branch/support distributions, threshold analysis, and clone visualizations |
 | `Clone/Clone_1/Clone_1.nex`, `Clone/Clone_1/Clone_1.nwk`, … | NEXUS/Newick trees for exported clones |
 | `Clone/<prefix>.clone_assignment.tsv` | Cell-to-clone assignments and membership status |
+
+## Standalone clone classification
+
+Choose where tree inference runs:
+
+- **Option A: SPICE performs inference.** `spice phylogeny ...` optionally filters
+  counts, runs IQ-TREE, and then classifies clones using the shared implementation.
+- **Option B: external/Galaxy IQ-TREE performs inference.** Pass that tool's
+  supported Newick `.treefile` to `spice clones`. SPICE does not launch IQ-TREE.
+
+```bash
+spice clones --tree "/path/to/IQ-TREE supported tree.treefile" \
+  --output_directory results/sample --prefix sample
+# Explicit manual cut, using the same options available on phylogeny:
+spice clones --tree "/path/to/IQ-TREE supported tree.treefile" \
+  --output_directory results/manual --prefix sample \
+  --clone_cut_mode manual --clone_cut_threshold 0.10 --outgroup Ref
+```
+
+`python SPICE.py clones ...` is equivalent. The filename is arbitrary; the
+content must follow the existing IQ-TREE Newick support-label contract:
+**SH-aLRT/UFBoot**, in that order. This command performs rooting, support
+filtering, branch-cut analysis, threshold selection, clone assignment and tree
+export. It accepts all thirteen clone/rooting options in the phylogeny table
+above, with identical defaults and semantics. It has no model, bootstrap
+replicate, SH-aLRT replicate or thread option and requires no IQ-TREE executable.
+
+Outputs retain the existing `Phylo/` and `Clone/` layout plus
+`<prefix>.runtime.json`. Use a separate output directory for each analysis;
+shared plot/sweep filenames retain their existing behavior. Provenance lists
+discoverable executable paths/hashes, which do not imply execution; `clones`
+skips the IQ-TREE version probe entirely. See [the command contract](docs/clones.md)
+for every default, the R interface and the output inventory.
+
+This separation allows orchestration systems to use their own IQ-TREE tool.
+Phase 4 does not provide Galaxy wrappers, Planemo workflows or Tool Shed assets.
 
 ## Ancestral state estimation
 
