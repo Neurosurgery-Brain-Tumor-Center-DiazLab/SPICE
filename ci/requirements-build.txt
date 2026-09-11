@@ -1,0 +1,2 @@
+# Build/check tooling only; keep separate from Python runtime requirements.
+build==1.4.0

@@ -3,6 +3,7 @@ from pathlib import Path
 import subprocess
 import tempfile
 import re
+from .paths import R_DIR
 from .standard_input import read_table, unique_index, write_bundle, QUALITY
 
 
@@ -53,7 +54,7 @@ def import_monopogen(directory, output):
             raw_variants[vid] = item
         with tempfile.TemporaryDirectory() as tmp:
             exported = Path(tmp) / 'matrix.tsv'
-            subprocess.run(['Rscript', str(Path(__file__).with_name('matrix_bridge.R')), 'export', str(path), str(exported)], check=True)
+            subprocess.run(['Rscript', str(R_DIR / 'matrix_bridge.R'), 'export', str(path), str(exported)], check=True)
             mh, mr = read_table(exported)
         if set(mh[1:]) != set(cell_order):
             raise ValueError(f'{chrom}: RDS and cell metadata IDs disagree')

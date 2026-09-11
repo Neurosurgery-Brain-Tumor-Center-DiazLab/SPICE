@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "spice-lineage"
+dynamic = ["version"]
+description = "Single-cell Plasticity Inference and Clonal Evolution"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "GPL-3.0-only"
+license-files = ["LICENSE", "CITATION.cff"]
+authors = [{name = "Bohyeon Yu", email = "bohyeon.yu@ucsf.edu"}]
+dependencies = ["pandas>=1.5,<3"]
+
+[project.urls]
+Repository = "https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE"
+
+[project.scripts]
+spice = "spice_lineage.cli:main"
+
+[tool.setuptools]
+packages = ["spice_lineage"]
+include-package-data = false
+
+[tool.setuptools.dynamic]
+version = {file = "spice_lineage/VERSION"}
+
+[tool.setuptools.package-data]
+spice_lineage = ["VERSION", "resources/r/*.R"]

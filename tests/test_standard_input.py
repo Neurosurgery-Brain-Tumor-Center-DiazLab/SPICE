@@ -11,9 +11,9 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import SPICE
-from scripts.standard_input import load_bundle, validate, write_bundle, read_table, write_table
-from scripts.import_monopogen import import_monopogen
+from spice_lineage import cli as SPICE
+from spice_lineage.standard_input import load_bundle, validate, write_bundle, read_table, write_table
+from spice_lineage.import_monopogen import import_monopogen
 
 IDS = ['chr1:10:A:G', 'chr1:20:A:G', 'chr2:30:C:T', 'chr2:40:G:A']
 CELLS = ['Ref', 'cell-2', 'cell_3', 'cell4']
@@ -126,7 +126,7 @@ class RouteTests(unittest.TestCase):
         legacy = self.root/'legacy'; legacy.mkdir()
         for name in ('sample.cellID.filter.csv', 'sample.SNVs.filter.csv'):
             shutil.copyfile(self.root/'direct'/name, legacy/name)
-        subprocess.run(['Rscript', str(SPICE.SCRIPTS_DIR/'monopogen_merge.R'), str(self.source), str(legacy), 'sample'], check=True, capture_output=True)
+        subprocess.run(['Rscript', str(Path(__file__).resolve().parents[1]/'scripts/monopogen_merge.R'), str(self.source), str(legacy), 'sample'], check=True, capture_output=True)
         subprocess.run(['Rscript', str(SPICE.SCRIPTS_DIR/'mutation_filter.R'), str(legacy)+os.sep, 'sample',
                         str(self.root/'direct'/'sample.selected_cells.tsv'), '2', '1', '1'], check=True, capture_output=True)
         self.assertEqual((legacy/'sample.SNV_mat.filter.csv').read_bytes(), (self.root/'direct'/'sample.SNV_mat.filter.csv').read_bytes())
@@ -191,7 +191,7 @@ class RouteTests(unittest.TestCase):
             args = self.parser.parse_args(['phylogeny', str(source), str(self.root/mode), 'sample',
                 '--input_format', mode, '--min_alt_cells_per_snv', '2', '--min_snvs_per_cell', '1',
                 '--threads', '2', '--clone_cut_mode', 'manual', '--clone_cut_threshold', '.02', '--outgroup', 'Ref'])
-            with patch('scripts.IQTREE2.os.path.isfile', return_value=True), patch('scripts.IQTREE2.os.access', return_value=True), patch.dict(os.environ, {'IQTREE2_BIN':'/fixture/iqtree'}), patch.object(SPICE.subprocess, 'run', side_effect=dispatch):
+            with patch('spice_lineage.IQTREE2.os.path.isfile', return_value=True), patch('spice_lineage.IQTREE2.os.access', return_value=True), patch.dict(os.environ, {'IQTREE2_BIN':'/fixture/iqtree'}), patch.object(SPICE.subprocess, 'run', side_effect=dispatch):
                 SPICE.run_phylogeny(args)
         self.assertEqual((self.root/'standard'/'sample.fasta').read_bytes(), (self.root/'monopogen'/'sample.fasta').read_bytes())
         self.assertEqual(calls[0][calls[0].index('-T')+1], '2')

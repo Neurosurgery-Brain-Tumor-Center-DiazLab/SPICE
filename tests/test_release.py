@@ -2,9 +2,9 @@ import csv,json,os,pathlib,subprocess,sys,tempfile,unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]))
-from scripts.IQTREE2 import iqtree2_command,generate_script
-from scripts.summarize_clones import run_summary,bh_adjust
-from scripts.runtime_info import capture_runtime,save_runtime,ROOT
+from spice_lineage.IQTREE2 import iqtree2_command,generate_script
+from spice_lineage.summarize_clones import run_summary,bh_adjust
+from spice_lineage.runtime_info import capture_runtime,save_runtime,ROOT
 class ReleaseTests(unittest.TestCase):
  def test_shell_characters_are_literal(self):
   with tempfile.TemporaryDirectory(prefix='SPICE path ') as tmp:
@@ -35,8 +35,8 @@ class ReleaseTests(unittest.TestCase):
  def test_runtime_record_preserves_previous_file(self):
   with tempfile.TemporaryDirectory() as tmp:
    args=SimpleNamespace(command='ancestry',output_directory=tmp,prefix='sample')
-   with patch('scripts.runtime_info.probe',return_value={'unavailable':'fixture'}):record=capture_runtime(args,ROOT)
-   self.assertIn('SPICE.py',record['source_sha256'])
+   with patch('spice_lineage.runtime_info.probe',return_value={'unavailable':'fixture'}):record=capture_runtime(args,ROOT)
+   self.assertIn('spice_lineage/cli.py',record['source_sha256'])
    save_runtime(record,args,ROOT,True);save_runtime(record,args,ROOT,False)
    paths=list(pathlib.Path(tmp).glob('*.runtime*.json'));self.assertEqual(len(paths),2)
    self.assertEqual({json.loads(p.read_text())['success'] for p in paths},{True,False})

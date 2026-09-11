@@ -1,5 +1,5 @@
-source("scripts/spice_ancestry_utils.R")
-source("scripts/spice_plasticity_utils.R")
+source("spice_lineage/resources/r/spice_ancestry_utils.R")
+source("spice_lineage/resources/r/spice_plasticity_utils.R")
 expect_error <- function(expr, pattern) {
   e <- tryCatch({force(expr); NULL}, error=function(e) e)
   stopifnot(inherits(e,"error"), grepl(pattern,conditionMessage(e)))

@@ -3,7 +3,7 @@ import pathlib, tempfile, unittest
 from unittest.mock import patch
 import sys
 sys.path.insert(0,str(pathlib.Path(__file__).resolve().parents[1]))
-import SPICE
+from spice_lineage import cli as SPICE
 class QCInterface(unittest.TestCase):
  def test_cli_forwarding_and_validation(self):
   with tempfile.TemporaryDirectory() as tmp:
@@ -24,7 +24,7 @@ class QCInterface(unittest.TestCase):
     args.rhat_threshold=1.01;args.min_ancestral_probability=1.1
     with self.assertRaises(ValueError):SPICE._qc_arguments(args)
  def test_readme_options(self):
-  doc=(SPICE.PROJECT_DIR/'README.md').read_text()
+  doc=(pathlib.Path(__file__).resolve().parents[1]/'README.md').read_text()
   parsers=next(a.choices for a in SPICE.build_parser()._actions if hasattr(a,'choices') and isinstance(a.choices,dict))
   for stage in ('ancestry','plasticity'):
    for action in parsers[stage]._actions:
