@@ -13,6 +13,7 @@ import sys
 import tempfile
 import time
 import urllib.request
+from urllib.parse import unquote, urlparse
 import xml.etree.ElementTree as ET
 
 from check_distribution import inspect_package, prepare_checks, sha256
@@ -175,6 +176,20 @@ def check(args, work, report):
                     "Galaxy tests require the verified official BayesTraits V4.1.3 download")
             report["bayestraits"] = info
             env["BAYESTRAITS_BIN"] = str(binary)
+            # Galaxy/Gravity need not inherit the launcher environment. Configure
+            # the administrator executable on the actual local job destination.
+            job_config = work / "job-conf.yml"
+            job_config.write_text(json.dumps({
+                "runners": {"local": {"load": "galaxy.jobs.runners.local:LocalJobRunner", "workers": 1}},
+                "execution": {"default": "local", "environments": {"local": {
+                    "runner": "local", "tmp_dir": True,
+                    "env": [{"name": "BAYESTRAITS_BIN", "value": str(binary)},
+                            {"name": "OPENBLAS_NUM_THREADS", "value": "1"},
+                            {"name": "OMP_NUM_THREADS", "value": "1"}]}}},
+                "tools": [{"class": "local", "environment": "local"}],
+            }, indent=2) + "\n")
+            common.extend(["--job_config_file", job_config])
+            report["bayestraits"]["job_environment"] = "local destination BAYESTRAITS_BIN"
             expected_tools = sum(len(ET.parse(path).getroot().findall("tests/test"))
                                  for path in tools.glob("spice_*.xml"))
             for name, target, count, extra in [("tools", tools, expected_tools, []),
@@ -186,6 +201,15 @@ def check(args, work, report):
                      "--test_output_xunit", work / (name + ".xml")],
                     work, env, name, report)
                 report[name] = validate_test_report(test_report, count)
+                installed_prefix = conda_prefix / "envs" / "__spice-lineage@0.2.0"
+                records = list((installed_prefix / "conda-meta").glob("spice-lineage-*.json"))
+                require(len(records) == 1, "Galaxy SPICE installation record is missing or ambiguous")
+                installed = json.loads(records[0].read_text())
+                require(installed.get("sha256") == sha256(package) and
+                        Path(unquote(urlparse(installed["url"]).path)).resolve() == package,
+                        "Galaxy used a stale or nonlocal SPICE artifact; use a fresh Conda toolchain prefix")
+                report["galaxy_spice_install"] = {"prefix": str(installed_prefix),
+                                                  "url": installed["url"], "sha256": installed["sha256"]}
     finally:
         if binary is not None:
             report["bayestraits_removed"] = not binary.exists()

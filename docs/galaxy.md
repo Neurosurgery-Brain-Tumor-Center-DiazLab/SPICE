@@ -26,7 +26,11 @@ Clones discovers SPICE's `Clone_N/Clone_N.nwk` exports as a list with identifier
 list and Plasticity over the paired original-tree/ancestry lists. Keep both
 lists in the same order with the same identifiers. The full states dataset is
 shared across jobs: SPICE requires every tree tip and ignores extra cells.
-Tree/state fingerprints and QC policy are checked by the existing CLI.
+Tree/state fingerprints and QC policy are checked by the CLI.
+BayesTraits V4 cannot parse IQ-TREE internal support labels. SPICE omits this
+metadata only from its temporary NEXUS subprocess copy; original input bytes,
+supports, node identities, rooted topology and branch lengths are retained.
+Fast invariance and real seeded-equivalence regressions cover Newick and NEXUS.
 
 Summarize uses each collection element identifier literally as `clone_id` in a
 job-local TSV manifest, constructed with Python's CSV writer. Blank, duplicate,
@@ -67,7 +71,9 @@ accessible to the Galaxy job runner through `BAYESTRAITS_BIN` or PATH. The tools
 provide no executable-upload parameter. The SPICE Conda package, wheel, source
 archive and OCI image do not include BayesTraits. A remote/container job runner
 must explicitly propagate or mount the administrator's executable and its runtime
-libraries; the local validation runner uses local Galaxy jobs.
+libraries; the local validation runner configures BAYESTRAITS_BIN explicitly on its local
+Galaxy job destination, rather than assuming the server inherits its launcher
+environment. A missing administrator executable is a hard test failure.
 
 Manual tests acquire V4.1.3 only from the University of Reading URL already used
 by the real integration suite. Archive SHA-256:

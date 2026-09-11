@@ -3,7 +3,8 @@
 SPICE **0.2.0 remains unreleased**. These recipes and scripts build local review
 artifacts only. Nothing has been published to PyPI, Anaconda.org/Bioconda,
 GHCR, Quay or Docker Hub; no release or tag is created. Public installation
-commands are not yet available. Galaxy/Planemo work has not started.
+commands are not yet available. Phase 6 Galaxy testing uses this unpublished
+local package; see [the Galaxy guide](galaxy.md).
 
 ## Architecture and immutable source
 
@@ -14,13 +15,17 @@ The recipe builds the existing Python distribution with pip, with dependency
 installation, build isolation and pip caching disabled. Conda supplies the
 actual build requirements: Python, pip and setuptools >=77.
 
-The immutable source is the reviewed Phase 4 merge:
-e6c23ca39f44a47a8351e49d642e977ad8a7f87b. The commit-addressed GitHub archive
+The immutable source is the tested Phase 6 serialization-fix commit:
+d0570d923d7880139a3f4c0a7a2b2e7ce65bc307. The commit-addressed GitHub archive
 has SHA-256
-0102b4896cdb8bcaa4a1bcda22cf373d195b462863c01c0d8408b74c2a00257f.
+47ab47321d96bb09c5c2089a0155a029e415610929fef43aa8522f51d6fb703b.
 No moving branch, invented tag or placeholder hash is used. A commit archive
 also avoids the Bioconda lint restriction on git_url/git_rev.
-Packaging/tests/docs do not change the production Python or R source.
+The staged source now includes the minimal BayesTraits serialization fix for
+IQ-TREE internal support labels. Only the temporary subprocess NEXUS copy omits
+that metadata; original trees/supports, fingerprints, node identities and
+scientific calculations remain unchanged. Exact seeded ancestry equivalence
+and format/topology/branch-length regressions cover the fix.
 
 The package is **noarch: python**, version **0.2.0**, build **0**. Its own
 payload is interpreted Python/R source; platform-specific R and IQ-TREE

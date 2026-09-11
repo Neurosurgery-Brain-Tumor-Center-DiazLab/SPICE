@@ -51,7 +51,13 @@ Clones discovers unchanged `Clone_N.nwk` files as a list. Ancestry maps over tha
 list with the full state table; Plasticity maps aligned original trees and
 ancestry results; Summarize uses unchanged list identifiers in its manifest and
 calls the existing BH implementation. Production defaults are checked against
-the CLI. No scientific Python/R production file was modified.
+the CLI. A reproduced BayesTraits parser defect required one small production
+engineering fix in spice_ancestry_utils.R: omit internal support-label metadata
+only in the temporary NEXUS copy passed to V4. Original input/supports and tree
+fingerprints remain intact. Fast invariance tests cover both formats; real
+installed-wheel tests require exact seeded-result equivalence to an unlabeled
+tree. Scientific methods/defaults, topology, branch lengths and node IDs remain
+unchanged.
 
 `check_galaxy.py` stages tests outside Git, checks the local Conda artifact and
 its exact production payload, pins Galaxy release_25.0 commit
@@ -69,19 +75,28 @@ The existing manual-only integration workflow retains its real scientific job
 and adds an independent Galaxy job. Only named text/report artifacts are retained.
 Normal required CI remains **Phase 1 required checks** and does not launch Galaxy.
 The source archive includes the small wrappers/workflow/tests/tutorial; the wheel
-contains the same production payload as before.
+includes the tested serialization fix. The Conda source pin identifies that
+exact production payload: source commit `d0570d923d7880139a3f4c0a7a2b2e7ce65bc307`,
+archive SHA-256 `47ab47321d96bb09c5c2089a0155a029e415610929fef43aa8522f51d6fb703b`.
+The complete fixed installed-wheel integration passed (155.52 seconds, zero
+skips), including exact labeled/unlabeled seeded ancestry equivalence for both
+Newick and NEXUS. Required source checks pass with the new R regressions.
 
 ## Validation status
 
 Required source checks (47 tests), all five installed-wheel tests and Planemo
-tool/shed/workflow lint pass locally. Full final real IQ-TREE/BayesTraits
-integration passed with zero skips (273.29 seconds); its temporary executable
+tool/shed/workflow lint pass locally. The final fixed real IQ-TREE/BayesTraits
+integration passed with zero skips (155.52 seconds); its temporary executable
 was removed. actionlint 1.7.7 and git diff --check pass.
 
 Local Galaxy startup succeeded after the build constraint, but its upload
 worker failed in Python forkserver with an AF_UNIX invalid-argument error on
 WSL1. The attempt was stopped and BayesTraits removal verified. No local
 Galaxy functional pass is claimed; native hosted Linux supplies that gate.
+The first hosted run passed Filter, Clones and observed-only Plasticity. Its
+remaining failures were a CRLF-sensitive summary assertion (corrected) and the
+missing job-level BayesTraits environment (now explicitly configured). The real
+scientific job passed. First run: 34642191159; normal CI: 34642192212.
 Functional Galaxy and final hosted gates are still pending while this branch is
 being developed. Phase 6 must not be described as complete until the wrapper,
 workflow and final-head hosted jobs all succeed. This section and the PR will

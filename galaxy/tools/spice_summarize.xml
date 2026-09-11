@@ -32,8 +32,8 @@ ${json.dumps({'argv': ['summarize', 'clone-tests.tsv', 'out/summary.tsv', '--alp
             </param>
             <output name="summary"><assert_contents>
                 <has_n_lines n="3"/>
-                <has_line_matching expression="Clone_1\t[^\t]+\tpass\t25\t0.01\tgreater\t0.02\tTrue\t2"/>
-                <has_line_matching expression="Clone_2\t[^\t]+\tpass\t50\t0.2\tgreater\t0.2\tFalse\t2"/>
+                <has_line_matching expression="Clone_1\t[^\t]+\tpass\t25\t0.01\tgreater\t0.02\tTrue\t2\r?"/>
+                <has_line_matching expression="Clone_2\t[^\t]+\tpass\t50\t0.2\tgreater\t0.2\tFalse\t2\r?"/>
             </assert_contents></output>
             <expand macro="runtime_test" command="summarize"/>
         </test>

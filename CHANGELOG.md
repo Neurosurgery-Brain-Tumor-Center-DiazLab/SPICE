@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Fix BayesTraits V4 parsing of IQ-TREE-supported clone trees by omitting internal
+  support-label metadata only from the temporary NEXUS subprocess copy. Preserve
+  the original input/supports, node identities, rooted topology, branch lengths,
+  fingerprints and scientific calculations. Add Newick/NEXUS invariance and
+  real installed-wheel seeded ancestry equivalence regressions.
+
 - Stage five native Galaxy 25.0 wrappers (0.2.0+galaxy0), shared metadata,
   synthetic Planemo tests and a clone-collection workflow using pinned IUC
   IQ-TREE 2.4.0+galaxy2, changeset e727e82945af. Ancestry/plasticity retain
@@ -11,7 +17,7 @@
   checksum-verified and removed; server deployment needs an administrator's
   executable. Required PR CI remains fast with static/default/manifest checks.
 - Add Tool Shed staging metadata and a repository-local GTN-style tutorial
-  draft. Keep 0.2.0 unreleased; scientific code/defaults and output schemas
+  draft. Keep 0.2.0 unreleased; scientific methods/defaults and output schemas
   are unchanged. No Tool Shed, GTN, package, container, release or tag publication.
 
 - Stage classic Bioconda-style Conda packaging from a checksum-pinned Phase 4

@@ -207,3 +207,8 @@ checks this unpublished local Conda package before resolving Galaxy dependencies
 from its file channel. BayesTraits remains temporary and external. Normal
 required CI does not start Galaxy. Tool Shed/GTN and public package/container
 publication remain separate maintainer decisions.
+
+The suite additionally checks IQ-TREE-style internal support labels in both
+Newick and NEXUS ancestry inputs. BayesTraits receives a temporary copy without
+internal label metadata; original tree bytes/fingerprints and exact seeded
+ancestry output are asserted unchanged relative to the unlabeled reference.
