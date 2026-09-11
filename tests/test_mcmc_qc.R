@@ -151,3 +151,31 @@ stopifnot(ape::is.rooted(converted_tree),
 stopifnot(identical(spice_bt_tree_input(converted_file,converted_tree,"unused"),converted_file))
 unlink(converted_file)
 cat("PASS: Newick/NEXUS subprocess input preserves rooting, tips, topology and branch lengths\n")
+
+# Exported IQ-TREE clone labels must not enter V4's limited NEXUS parser.
+# Original trees/supports, node descendants, rooting and precision are preserved.
+writeLines("((a:0.1234567890123456,b:0.2)95.6/99:0.3,(c:0.4,d:0.5)96.9/99:0.6)100/100;",tree_file)
+labeled_tree <- spice_read_tree(tree_file)
+saved_tree <- labeled_tree
+saved_hash <- unname(tools::md5sum(tree_file))
+labeled_nexus <- tempfile(fileext=".nex")
+ape::write.nexus(labeled_tree,file=labeled_nexus,digits=17)
+for (original in c(tree_file,labeled_nexus)) {
+  input <- spice_read_tree(original)
+  converted_file <- tempfile(fileext=".nex")
+  stopifnot(identical(spice_bt_tree_input(original,input,converted_file),converted_file))
+  converted <- ape::read.nexus(converted_file)
+  stopifnot(is.null(converted$node.label),
+            identical(input$tip.label,converted$tip.label),
+            identical(input$edge,converted$edge),
+            identical(input$Nnode,converted$Nnode),
+            identical(ape::is.rooted(input),ape::is.rooted(converted)),
+            max(abs(input$edge.length-converted$edge.length)) < 1e-15,
+            identical(spice_addnode_commands(input),spice_addnode_commands(converted)))
+  unlink(converted_file)
+}
+stopifnot(identical(labeled_tree,saved_tree),
+          identical(unname(tools::md5sum(tree_file)),saved_hash),
+          identical(spice_read_tree(tree_file)$node.label,saved_tree$node.label))
+unlink(labeled_nexus)
+cat("PASS: labeled Newick/NEXUS subprocess copies retain original trees and node identity\n")
