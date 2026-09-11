@@ -66,7 +66,7 @@ The standard frontend builds the wheel from the sdist by default; this also
 checks that the sdist is sufficient to build the package. `pip install .` is
 another supported local, non-editable installation.
 
-R/Rscript and R packages, IQ-TREE and BayesTraits remain external dependencies.
+For pip/wheel installation, R/Rscript and R packages, IQ-TREE and BayesTraits remain external dependencies.
 Their existing PATH, `IQTREE2_BIN`, `BAYESTRAITS_BIN` and `--bayestraits_bin`
 mechanisms are unchanged. Nothing has been published to PyPI, Bioconda or a
 container registry, and the distribution name has not been reserved.
@@ -102,3 +102,16 @@ ship only in the sdist; no external executables enter either distribution.
 Scientific release decisions remain outside the engineering checks.
 
 See [engineering-handoff.md](engineering-handoff.md) for observed local results.
+
+## Conda and OCI staging
+
+[Phase 5 distribution staging](distribution.md) wraps this same package with
+Conda-managed R and IQ-TREE dependencies and an OCI image built from the local
+Conda artifact. BayesTraits remains external. The production Python/R resources
+are unchanged; the immutable Phase 4 commit archive is the recipe source.
+The sdist includes the staging recipes, distribution checker, synthetic tests
+and manual workflow; the wheel payload remains unchanged.
+
+The existing package checker and real integration suite continue to validate
+pip/wheel installation separately. Full Conda/container validation is manual
+and does not expand the required fast CI job into an image build. No publication.
