@@ -6,6 +6,7 @@ This module provides a command-line interface with modular subcommands:
 - import-monopogen
 - filter
 - phylogeny
+- clones
 - ancestry
 - plasticity
 """
@@ -50,6 +51,77 @@ def add_filter_options(parser):
     parser.add_argument("--min_snvs_per_cell", type=int, default=5,
                           help="Minimum number of somatic SNVs that must be supported")
     parser.add_argument('--variant_qc', choices=['auto', 'metadata', 'none'], default='auto', help='auto uses all six QC metadata fields when present; metadata requires them; none skips metadata QC')
+
+
+def add_clone_options(parser):
+    """One set of clone/rooting options and defaults for both tree entry points."""
+    parser.add_argument("--uf_support_threshold", type=int, default=90,
+                       help="Branch support threshold value to be applied if ultrafast bootstrap is performed")
+    parser.add_argument("--sh_support_threshold", type=int, default=75,
+                       help="Branch support threshold value to be applied if the SH-aLRT is performed")
+    parser.add_argument("--branch_cut_min", type=float, default=0,
+                       help="Minimum value for the branch-length cutting range")
+    parser.add_argument("--branch_cut_max", type=float, default=0.5,
+                       help="Maximum value for the branch-length cutting range")
+    parser.add_argument("--branch_cut_step", type=float, default=0.01,
+                       help="Step size for the branch-length cutting range")
+    parser.add_argument(
+        "--clone_cut_mode",
+        choices=["auto", "manual"],
+        default="auto",
+        help=(
+            "How to choose the final incoming branch-length threshold. "
+            "'auto' selects a stable, trusted, parsimonious solution; "
+            "'manual' uses --clone_cut_threshold."
+        ),
+    )
+    parser.add_argument(
+        "--clone_cut_threshold",
+        type=float,
+        default=None,
+        help="Final clone-cut threshold when --clone_cut_mode manual is used",
+    )
+    parser.add_argument(
+        "--min_trusted_ratio",
+        type=float,
+        default=0.95,
+        help="Minimum trusted-cluster ratio required for automatic threshold selection",
+    )
+    parser.add_argument(
+        "--min_partition_stability",
+        type=float,
+        default=0.95,
+        help="Minimum adjacent-threshold Adjusted Rand Index required for automatic selection",
+    )
+    parser.add_argument(
+        "--stability_window",
+        type=int,
+        default=3,
+        help="Minimum number of consecutive eligible thresholds defining a stable region",
+    )
+    parser.add_argument("--min_tips", type=int, default=50,
+                       help="Threshold for the minimum number of tips in the subclonal phylogenetic tree")
+
+    parser.add_argument(
+            "--root_method",
+            choices=["midpoint", "outgroup", "none"],
+            default="midpoint",
+            help=(
+                "Tree rooting method. "
+                "If --outgroup is provided, outgroup rooting takes precedence. "
+                "'none' requires the input tree to already be rooted."
+                )
+            )
+
+    parser.add_argument(
+        "--outgroup",
+        nargs="+",
+        default=None,
+        help=(
+            "One or more tip names to use as outgroup. "
+            "Providing this option automatically enables outgroup rooting."
+            )
+        )
 
 
 def run_import_monopogen(args):
@@ -188,10 +260,33 @@ def run_phylogeny(args: argparse.Namespace) -> None:
         print(f"Error: IQ-TREE2 failed with exit code {e.returncode}", file=sys.stderr)
         sys.exit(e.returncode)
 
-    # -------------------------------------------------------------------------
-    # Post-IQTREE: apply support thresholds and branch-length cut grid
-    # -------------------------------------------------------------------------
-    print("\n[SPICE:phylogeny] Running BranchSupportCut.R ...")
+    # IQ-TREE writes beside the actual alignment passed to -s (also for FASTA
+    # outside the output directory). Filtering still supplies <prefix>.fasta.
+    tree_file = Path(str(fasta_path) + ".treefile").resolve()
+    run_clone_classification(args, tree_file)
+
+
+def run_clones(args: argparse.Namespace) -> None:
+    """Classify an existing supported IQ-TREE Newick tree without inference."""
+    tree_file = _require_file(args.tree, "IQ-TREE tree")
+    try:
+        with tree_file.open("rb") as handle:
+            handle.read(1)
+    except OSError as exc:
+        raise ValueError(f"Cannot read IQ-TREE tree: {tree_file}: {exc}") from exc
+    run_clone_classification(args, tree_file)
+
+
+def run_clone_classification(args: argparse.Namespace, tree_file: Path) -> None:
+    """Run the authoritative R clone analysis; scientific options are unchanged.
+
+    R arguments 1-15 retain their historical positions. Argument 16 supplies the
+    explicit input tree; output directories still end in a separator for R.
+    """
+    output_directory = str(Path(args.output_directory).resolve()) + os.sep
+    Path(output_directory).mkdir(parents=True, exist_ok=True)
+    sample_id = args.prefix
+    print(f"\n[SPICE:{args.command}] Running BranchSupportCut.R ...")
 
     # Pull values from CLI args
     uf_support = args.uf_support_threshold
@@ -240,8 +335,8 @@ def run_phylogeny(args: argparse.Namespace) -> None:
     if outgroup:
         root_method = "outgroup"
         outgroup_string = ",".join(outgroup)
-        print("[SPICE:phylogeny] Rooting method: outgroup")
-        print("[SPICE:phylogeny] Outgroup tip(s): " + ", ".join(outgroup))
+        print(f"[SPICE:{args.command}] Rooting method: outgroup")
+        print(f"[SPICE:{args.command}] Outgroup tip(s): " + ", ".join(outgroup))
     else:
         outgroup_string = "NA"
         if root_method == "outgroup":
@@ -250,7 +345,7 @@ def run_phylogeny(args: argparse.Namespace) -> None:
                 file=sys.stderr,
             )
             sys.exit(1)
-        print(f"[SPICE:phylogeny] Rooting method: {root_method}")
+        print(f"[SPICE:{args.command}] Rooting method: {root_method}")
 
     # Convert optional floats to strings safe for R (NA if None)
     def _num_or_na(x):
@@ -275,11 +370,12 @@ def run_phylogeny(args: argparse.Namespace) -> None:
         str(min_trusted_ratio),       # args[13] MIN_TRUSTED_RATIO
         str(min_partition_stability), # args[14] MIN_PARTITION_STABILITY
         str(int(stability_window)),   # args[15] STABILITY_WINDOW
+        str(Path(tree_file).expanduser().resolve()),  # args[16] explicit IQ-TREE tree
     ]
 
     try:
         subprocess.run(cmd, check=True)
-        print("[SPICE:phylogeny] BranchSupportCut.R finished successfully.")
+        print(f"[SPICE:{args.command}] BranchSupportCut.R finished successfully.")
     except FileNotFoundError:
         print("Error: 'Rscript' not found or 'BranchSupportCut.R' package resource missing.", file=sys.stderr)
         sys.exit(1)
@@ -583,81 +679,36 @@ def build_parser() -> argparse.ArgumentParser:
                        help="Number of replicates (≥1000) for ultrafast bootstrap analysis")
     p_phy.add_argument("--sh_alrt_replicates", type=int, default=1000,
                        help="Number of replicates (≥1000) to perform the SH-like approximate likelihood ratio test (SH-aLRT)")
-    p_phy.add_argument("--uf_support_threshold", type=int, default=90,
-                       help="Branch support threshold value to be applied if ultrafast bootstrap is performed")
-    p_phy.add_argument("--sh_support_threshold", type=int, default=75,
-                       help="Branch support threshold value to be applied if the SH-aLRT is performed")
-    p_phy.add_argument("--branch_cut_min", type=float, default=0,
-                       help="Minimum value for the branch-length cutting range")
-    p_phy.add_argument("--branch_cut_max", type=float, default=0.5,
-                       help="Maximum value for the branch-length cutting range")
-    p_phy.add_argument("--branch_cut_step", type=float, default=0.01,
-                       help="Step size for the branch-length cutting range")
-    p_phy.add_argument(
-        "--clone_cut_mode",
-        choices=["auto", "manual"],
-        default="auto",
-        help=(
-            "How to choose the final incoming branch-length threshold. "
-            "'auto' selects a stable, trusted, parsimonious solution; "
-            "'manual' uses --clone_cut_threshold."
-        ),
-    )
-    p_phy.add_argument(
-        "--clone_cut_threshold",
-        type=float,
-        default=None,
-        help="Final clone-cut threshold when --clone_cut_mode manual is used",
-    )
-    p_phy.add_argument(
-        "--min_trusted_ratio",
-        type=float,
-        default=0.95,
-        help="Minimum trusted-cluster ratio required for automatic threshold selection",
-    )
-    p_phy.add_argument(
-        "--min_partition_stability",
-        type=float,
-        default=0.95,
-        help="Minimum adjacent-threshold Adjusted Rand Index required for automatic selection",
-    )
-    p_phy.add_argument(
-        "--stability_window",
-        type=int,
-        default=3,
-        help="Minimum number of consecutive eligible thresholds defining a stable region",
-    )
-    p_phy.add_argument("--min_tips", type=int, default=50,
-                       help="Threshold for the minimum number of tips in the subclonal phylogenetic tree")
+    add_clone_options(p_phy)
     p_phy.add_argument("--threads", type=int, default=1,
                        help="Number of threads to use")
-
-    p_phy.add_argument(
-            "--root_method",
-            choices=["midpoint", "outgroup", "none"],
-            default="midpoint",
-            help=(
-                "Tree rooting method. "
-                "If --outgroup is provided, outgroup rooting takes precedence. "
-                "'none' requires the input tree to already be rooted."
-                )
-            )
-
-    p_phy.add_argument(
-        "--outgroup",
-        nargs="+",
-        default=None,
-        help=(
-            "One or more tip names to use as outgroup. "
-            "Providing this option automatically enables outgroup rooting."
-            )
-        )
 
     # Required positional arguments
     p_phy.add_argument("fasta_path", help="FASTA file or input bundle/Monopogen directory selected by --input_format")
     p_phy.add_argument("output_directory", help="")
     p_phy.add_argument("prefix", help="")
     p_phy.set_defaults(func=run_phylogeny)
+
+    # ------------------------------- clones -----------------------------------
+    p_clones = subparsers.add_parser(
+        "clones",
+        help="Classify clones from an existing supported IQ-TREE tree; no tree inference",
+        description=(
+            "Does not infer a tree or run IQ-TREE. Expects an IQ-TREE-style supported "
+            "Newick tree with node labels interpreted as SH-aLRT/UFBoot. Performs "
+            "SPICE rooting, support filtering, branch-cut analysis, threshold "
+            "selection, clone assignment, and clone tree export."
+        ),
+        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+    )
+    p_clones.add_argument("--tree", required=True,
+                          help="Existing IQ-TREE Newick tree with SH-aLRT/UFBoot support labels")
+    p_clones.add_argument("--output_directory", required=True,
+                          help="Directory for the existing Phylo/ and Clone/ output layout")
+    p_clones.add_argument("--prefix", required=True,
+                          help="Sample identifier used to prefix output filenames")
+    add_clone_options(p_clones)
+    p_clones.set_defaults(func=run_clones)
 
     # ------------------------------ ancestry ----------------------------------
     p_anc = subparsers.add_parser(

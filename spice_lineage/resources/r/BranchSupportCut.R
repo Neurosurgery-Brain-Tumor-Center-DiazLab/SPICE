@@ -58,7 +58,9 @@ if (is.na(OUTGROUP_STRING) || OUTGROUP_STRING == "" || OUTGROUP_STRING == "NA") 
 
 BRANCH_SEQ <- seq(BRANCH_CUT_MIN, BRANCH_CUT_MAX, by=BRANCH_CUT_STEP)	# range of branch-length cut thresholds
 
-treefile <- paste0(output_directory, sample_id, ".fasta.treefile")
+# Argument 16 supplies an explicit IQ-TREE Newick path. Retain the historical
+# argument form for direct callers; all scientific parameter positions stay fixed.
+treefile <- if (length(args) >= 16) args[16] else paste0(output_directory, sample_id, ".fasta.treefile")
 if (!file.exists(treefile)) {
   stop(paste("Phylogenetic tree file not found:", treefile))
 }
