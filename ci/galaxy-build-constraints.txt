@@ -1,0 +1,2 @@
+# Galaxy 25.0 rucio-clients build imports pkg_resources. Match Galaxy requirements.
+setuptools==79.0.1

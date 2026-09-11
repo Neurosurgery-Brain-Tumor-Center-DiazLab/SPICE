@@ -50,3 +50,52 @@ jobs:
             ${{ runner.temp }}/spice-integration/external tests with spaces/run_*/**/*.stderr.txt
             ${{ runner.temp }}/spice-integration/external tests with spaces/run_*/**/*.tsv
             ${{ runner.temp }}/spice-integration/external tests with spaces/run_*/**/*.runtime.json
+  galaxy:
+    name: Galaxy wrappers and clone-collection workflow
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3
+        with:
+          micromamba-version: 2.3.2-0
+          environment-name: spice-galaxy-build
+          environment-file: ci/distribution-linux-64.lock
+          create-args: --strict-channel-priority
+          cache-environment: false
+          cache-downloads: false
+          init-shell: none
+          generate-run-shell: true
+      - name: Install pinned Planemo in a separate environment
+        shell: micromamba-shell {0}
+        run: |
+          python3 -m venv "$RUNNER_TEMP/planemo"
+          "$RUNNER_TEMP/planemo/bin/python" -m pip install -r ci/requirements-galaxy.txt
+      - name: Validate local Conda package, all wrappers and end-to-end Galaxy workflow
+        shell: micromamba-shell {0}
+        run: >-
+          python3 scripts/check_galaxy.py
+          --planemo "$RUNNER_TEMP/planemo/bin/planemo"
+          --work-dir "$RUNNER_TEMP/spice-galaxy"
+      # Explicit report allowlist. Never upload Galaxy histories, binaries, or caches.
+      - name: Retain Galaxy text and report evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spice-galaxy-text-evidence
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/spice-galaxy/*.log
+            ${{ runner.temp }}/spice-galaxy/result.json
+            ${{ runner.temp }}/spice-galaxy/tools.json
+            ${{ runner.temp }}/spice-galaxy/tools.xml
+            ${{ runner.temp }}/spice-galaxy/tools.html
+            ${{ runner.temp }}/spice-galaxy/workflow.json
+            ${{ runner.temp }}/spice-galaxy/workflow.xml
+            ${{ runner.temp }}/spice-galaxy/workflow.html
+            ${{ runner.temp }}/spice-galaxy/distribution/*.log
+            ${{ runner.temp }}/spice-galaxy/distribution/result.json
+            ${{ runner.temp }}/spice-galaxy/distribution/package-files.json

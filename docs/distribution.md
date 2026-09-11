@@ -221,3 +221,13 @@ References, checked for this phase:
 [lint rules](https://bioconda.github.io/contributor/linting.html),
 [Bioconda contributions and automated containers](https://bioconda.github.io/contributor/index.html),
 [micromamba container usage](https://micromamba-docker.readthedocs.io/en/stable/advanced_usage.html).
+
+## Phase 6 Galaxy staging
+
+The [Galaxy guide](galaxy.md) documents five native wrappers and a collection
+workflow pinned to IUC IQ-TREE 2.4.0. The existing manual integration workflow
+retains the real scientific job and adds a separate Galaxy job. It builds and
+checks this unpublished local Conda package before resolving Galaxy dependencies
+from its file channel. BayesTraits remains temporary and external. Normal
+required CI does not start Galaxy. Tool Shed/GTN and public package/container
+publication remain separate maintainer decisions.

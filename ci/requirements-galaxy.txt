@@ -1,0 +1,4 @@
+# Manual Galaxy validation tooling, separate from required CI.
+planemo==0.75.47
+gxformat2==0.27.0
+mercurial==7.2.4
