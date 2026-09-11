@@ -11,7 +11,8 @@
 - Stage five native Galaxy 25.0 wrappers (0.2.0+galaxy0), shared metadata,
   synthetic Planemo tests and a clone-collection workflow using pinned IUC
   IQ-TREE 2.4.0+galaxy2, changeset e727e82945af. Ancestry/plasticity retain
-  aligned clone identifiers through the existing SPICE BH summary.
+  aligned clone identifiers through the existing SPICE BH summary. Pin BIC
+  explicitly in the IUC workflow to preserve SPICE's IQ-TREE model selection.
 - Add external local-Conda Galaxy validation and a separate manual Galaxy job
   to the existing integration workflow. BayesTraits is officially acquired,
   checksum-verified and removed; server deployment needs an administrator's

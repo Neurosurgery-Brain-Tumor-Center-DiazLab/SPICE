@@ -26,8 +26,9 @@ intended biological order; it is not inferred by SPICE.
    count filtering, so use the final matrix/FASTA for final retained dimensions.
 2. Open the pinned **IQ-TREE 2.4.0** tool. Select the filtered FASTA, DNA,
    outgroup `Ref`, model `JC`, seed 12345 and the short-alignment single-thread
-   setting. Set SH-aLRT to 1000 and ultrafast bootstrap to 1000. Model TEST is
-   the normal SPICE default; JC is explicit for this small exercise.
+   setting. Set SH-aLRT to 1000, ultrafast bootstrap to 1000 and model-selection
+   criterion to BIC (the IUC form initially selects AIC). Model TEST with BIC
+   matches the normal SPICE invocation; JC is explicit for this small exercise.
 3. Run **SPICE Clones** on IQ-TREE's supported treefile output. Set outgroup
    `Ref`, minimum tips to 2, manual clone-cut mode and cutoff 0.10 for this
    fixture, matching the existing real integration test. Automatic selection

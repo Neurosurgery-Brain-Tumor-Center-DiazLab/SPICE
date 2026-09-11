@@ -55,14 +55,19 @@ The runner checks the Tool Shed's downloadable metadata before testing, and
 Planemo installs the exact revision. IQ-TREE uses DNA, 1,000 SH-aLRT replicates,
 1,000 UFBoot replicates and the supported `treefile` output, whose labels retain
 SH-aLRT/UFBoot order. Model defaults to TEST; the small synthetic job explicitly
-uses JC, a seed and one thread. IQ-TREE 3 has not been scientifically validated
-for SPICE and is deliberately excluded.
+uses JC, a seed and one thread. The workflow explicitly sets model-selection
+criterion BIC, matching the SPICE IQ-TREE 2.4.0 invocation; the IUC form otherwise
+defaults to AIC. This follows IQ-TREE 2.4.0 `-h` and its
+[model-selection reference](https://www.iqtree.org/doc/Command-Reference#automatic-model-selection).
+IQ-TREE 3 has not been scientifically validated for SPICE and is deliberately
+excluded.
 
 The selected Galaxy release_25.0 source is pinned to
 `ec10c792f94c6da0bc97b177f73be2a9287637dd` (version `25.0.5.dev0`).
 Planemo is pinned to 0.75.47, gxformat2 to 0.27.0 and Mercurial to 7.2.4.
-Galaxy bootstrap pip is pinned to 26.2.1. A build-only setuptools constraint supplies `pkg_resources` for Galaxy's pinned
-rucio-clients dependency; it changes no SPICE runtime dependency.
+Galaxy bootstrap pip is pinned to 26.2.1. A build-only setuptools constraint
+supplies `pkg_resources` for Galaxy's pinned rucio-clients dependency; it changes
+no SPICE runtime dependency.
 
 ## BayesTraits administration
 
@@ -71,8 +76,8 @@ accessible to the Galaxy job runner through `BAYESTRAITS_BIN` or PATH. The tools
 provide no executable-upload parameter. The SPICE Conda package, wheel, source
 archive and OCI image do not include BayesTraits. A remote/container job runner
 must explicitly propagate or mount the administrator's executable and its runtime
-libraries; the local validation runner configures BAYESTRAITS_BIN explicitly on its local
-Galaxy job destination, rather than assuming the server inherits its launcher
+libraries; the local validation runner configures BAYESTRAITS_BIN explicitly on
+its local Galaxy job destination; the server need not inherit its launcher
 environment. A missing administrator executable is a hard test failure.
 
 Manual tests acquire V4.1.3 only from the University of Reading URL already used
@@ -120,8 +125,9 @@ The runner supplies the required Galaxy and Conda options omitted from this
 short command inventory. All six wrapper cases and the workflow must succeed;
 missing tests, failures and skips are errors. `--lint-only` explicitly returns
 an incomplete result. Retained `result.json` records exact commands, versions,
-package identity, zero-skip counts and BayesTraits removal. Report files contain
-job stdout/stderr and runtime provenance for diagnosis. Never commit Galaxy's
+package identity, zero-skip counts and BayesTraits removal. It also records the
+actual IQ-TREE 2.4.0 command and checks dataset IDs through each paired clone
+job and into Summarize. Report files contain job stdout/stderr and runtime provenance for diagnosis. Never commit Galaxy's
 database, histories, environments, caches, credentials or executable downloads.
 
 The existing **SPICE Phase 3 Integration** Actions workflow remains manual-only

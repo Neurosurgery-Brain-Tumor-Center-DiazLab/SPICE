@@ -113,6 +113,8 @@ class GalaxyContracts(unittest.TestCase):
         self.assertEqual(state["tree_parameters"]["single_branch"]["alrt"], 1000)
         self.assertEqual(state["bootstrap_parameters"]["ultrafast_bootstrap"]["ufboot"], 1000)
         self.assertEqual(state["general_options"]["seqtype"], "DNA")
+        # IUC defaults to AIC; SPICE relies on IQ-TREE 2.4.0's BIC default.
+        self.assertEqual(state["modelling_parameters"]["automatic_model"]["merit"], "BIC")
         for target, input_name, source, output in [
             ("clones", "tree", "iqtree", "treefile"),
             ("ancestry", "tree", "clones", "clone_trees"),

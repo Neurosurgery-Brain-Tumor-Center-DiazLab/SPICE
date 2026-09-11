@@ -7,6 +7,7 @@ from pathlib import Path
 import platform
 import re
 import resource
+import shlex
 import shutil
 import subprocess
 import sys
@@ -57,6 +58,48 @@ def validate_test_report(path, expected):
     require(all(state == "success" for state in states), f"Required test did not succeed: {states}")
     return {"status": "pass", "tests": len(tests), "skipped": 0,
             "identifiers": [test.get("id") for test in tests], "report": str(path)}
+
+
+def validate_workflow_execution(path):
+    data = json.loads(path.read_text())["tests"][0]["data"]
+    steps = {step["workflow_step_label"]: step
+             for step in data["invocation_details"]["steps"].values()}
+    iqtree = steps["iqtree"]["jobs"][0]
+    require(iqtree["tool_id"].endswith("/iqtree/" + IQTREE_TOOL_VERSION) and
+            iqtree["command_version"].startswith("IQ-TREE multicore version 2.4.0 "),
+            "Workflow did not execute the pinned IQ-TREE 2.4.0 tool")
+    command = shlex.split(iqtree["command_line"])
+    for flag, value in {"--seqtype": "DNA", "--alrt": "1000", "--ufboot": "1000",
+                        "--merit": "BIC", "-T": "1", "-m": "JC"}.items():
+        require(flag in command and command[command.index(flag) + 1] == value,
+                f"Workflow IQ-TREE command changed its validated {flag} setting")
+    clones = steps["clones"]["jobs"][0]
+    require(clones["inputs"]["tree"]["id"] == iqtree["outputs"]["treefile"]["id"],
+            "Clones did not consume IQ-TREE's supported treefile")
+    trees = {name.split("|", 1)[1][:-2]: output["id"]
+             for name, output in clones["outputs"].items()
+             if name.startswith("__new_primary_file_clone_trees|")}
+    require(sorted(trees) == ["Clone_1", "Clone_2", "Clone_3"], "Unexpected synthetic clone identifiers")
+    ancestry = steps["ancestry"]["jobs"]
+    plasticity = steps["plasticity"]["jobs"]
+    require(len(ancestry) == len(plasticity) == len(trees), "Mapped clone job count differs")
+    by_tree = {job["inputs"]["tree"]["id"]: job for job in ancestry}
+    require(set(by_tree) == set(trees.values()), "Ancestry mapping lost a clone tree")
+    require({job["inputs"]["tree"]["id"] for job in plasticity} == set(trees.values()),
+            "Plasticity mapping lost a clone tree")
+    for job in plasticity:
+        paired = by_tree[job["inputs"]["tree"]["id"]]
+        require(job["inputs"]["ancestral_states"]["id"] == paired["outputs"]["ancestral_states"]["id"] and
+                job["inputs"]["states"]["id"] == paired["inputs"]["states"]["id"],
+                "Plasticity tree/state/ancestry pairing differs")
+    summary = steps["summarize"]["jobs"][0]
+    require({value["id"] for value in summary["inputs"].values()} ==
+            {job["outputs"]["plasticity_test"]["id"] for job in plasticity},
+            "Summary did not receive every mapped plasticity result")
+    return {"iqtree_tool_id": iqtree["tool_id"], "iqtree_version": iqtree["command_version"],
+            "iqtree_command": iqtree["command_line"], "clone_identifiers": sorted(trees),
+            "ancestry_jobs": len(ancestry), "plasticity_jobs": len(plasticity),
+            "collection_alignment": "pass"}
 
 
 def verify_iqtree_revision():
@@ -201,6 +244,8 @@ def check(args, work, report):
                      "--test_output_xunit", work / (name + ".xml")],
                     work, env, name, report)
                 report[name] = validate_test_report(test_report, count)
+                if name == "workflow":
+                    report["workflow_execution"] = validate_workflow_execution(test_report)
                 installed_prefix = conda_prefix / "envs" / "__spice-lineage@0.2.0"
                 records = list((installed_prefix / "conda-meta").glob("spice-lineage-*.json"))
                 require(len(records) == 1, "Galaxy SPICE installation record is missing or ambiguous")
