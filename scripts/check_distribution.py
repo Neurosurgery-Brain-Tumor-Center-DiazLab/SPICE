@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 ROOT = Path(__file__).resolve().parents[1]
 RECIPE = ROOT / "packaging/bioconda/spice-lineage"
 CONTAINERFILE = ROOT / "packaging/container/Containerfile"
-SOURCE_REVISION = "e6c23ca39f44a47a8351e49d642e977ad8a7f87b"
+SOURCE_REVISION = "d0570d923d7880139a3f4c0a7a2b2e7ce65bc307"
 SUBCOMMANDS = ["import-monopogen", "filter", "phylogeny", "clones",
                "ancestry", "plasticity", "summarize"]
 

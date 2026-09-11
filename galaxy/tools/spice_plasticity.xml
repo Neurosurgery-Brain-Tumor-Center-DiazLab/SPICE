@@ -1,0 +1,107 @@
+<tool id="spice_plasticity" name="SPICE Plasticity" version="@TOOL_VERSION@+galaxy@VERSION_SUFFIX@" profile="@PROFILE@">
+    <description>quantify plasticity and test permutations</description>
+    <macros><import>macros.xml</import></macros>
+    <expand macro="requirements"/>
+    <expand macro="version_command"/>
+    <expand macro="command"/>
+    <configfiles>
+        <configfile name="arguments"><![CDATA[
+#import json
+#set $tree_name = 'tree.nex' if str($tree.ext) == 'nex' else 'tree.nwk'
+#set $stage = [(str($tree), $tree_name)]
+#set $argv = ['plasticity', $tree_name, str($states), str($ancestral_states), str($state_order), 'out', 'spice']
+#silent $argv.extend(['--perm_replicates', str($perm_replicates)])
+#silent $argv.extend(['--perm_chains', str($perm_chains)])
+#silent $argv.extend(['--perm_iterations', str($perm_iterations)])
+#silent $argv.extend(['--perm_burnin', str($perm_burnin)])
+#silent $argv.extend(['--perm_sample_period', str($perm_sample_period)])
+#silent $argv.extend(['--stepping_stones', str($stepping_stones)])
+#silent $argv.extend(['--stone_iterations', str($stone_iterations)])
+#silent $argv.extend(['--seed', str($seed)])
+#silent $argv.extend(['--threads', str($threads)])
+#silent $argv.extend(['--sig_direction', str($sig_direction)])
+@QC_ARGUMENTS@
+${json.dumps({'argv': $argv, 'stage': $stage})}
+        ]]></configfile>
+    </configfiles>
+    <inputs>
+        <param name="tree" type="data" label="Rooted clone tree" format="nhx,nex"/>
+        <param name="states" type="data" label="Cell-state annotations (full table accepted)" format="tabular"/>
+        <param name="ancestral_states" type="data" label="Corresponding SPICE ancestry result" format="tabular"/>
+        <param name="state_order" type="data" label="Biological state order" format="tabular"/>
+        <param argument="--sig_direction" type="select" label="Permutation alternative">
+            <option value="greater" selected="true">greater</option>
+            <option value="less">less</option>
+            <option value="two-sided">two-sided</option>
+        </param>
+        <param type="integer" label="Permutation replicates (0: observed only)" argument="--perm_replicates" value="1000" min="0"/>
+        <param type="integer" label="MCMC chains per permutation" argument="--perm_chains" value="3" min="2"/>
+        <param type="integer" label="Iterations per permutation chain" argument="--perm_iterations" value="1000000" min="1"/>
+        <param type="integer" label="Permutation burn-in" argument="--perm_burnin" value="200000" min="0"/>
+        <param type="integer" label="Permutation sampling period" argument="--perm_sample_period" value="1000" min="1"/>
+        <param type="integer" label="Stepping stones (0 disables)" argument="--stepping_stones" value="0" min="0"/>
+        <param type="integer" label="Iterations per stepping stone" argument="--stone_iterations" value="1000" min="1"/>
+        <param type="integer" label="State-shuffle seed" argument="--seed" value="12345" min="0"/>
+        <param type="integer" label="Parallel permutations" argument="--threads" value="1" min="1"/>
+        <expand macro="qc_inputs"/>
+    </inputs>
+    <outputs>
+        <data name="plasticity_test" format="tabular" from_work_dir="out/spice.plasticity_test.tsv" label="${tool.name} on ${on_string}: permutation test for Summarize"/>
+        <data name="plasticity" format="tabular" from_work_dir="out/spice.plasticity.tsv" label="${tool.name} on ${on_string}: observed plasticity"/>
+        <data name="transitions" format="tabular" from_work_dir="out/spice.transitions.tsv" label="${tool.name} on ${on_string}: edge transitions"/>
+        <data name="permutations" format="tabular" from_work_dir="out/spice.permutation_plasticity.tsv" label="${tool.name} on ${on_string}: permutation results"/>
+        <data name="run_info" format="tabular" from_work_dir="out/spice.plasticity_run_info.tsv" label="${tool.name} on ${on_string}: QC and run settings"/>
+        <data name="runtime" format="json" from_work_dir="out/spice.runtime.json" label="${tool.name} on ${on_string}: runtime provenance"/>
+    </outputs>
+    <tests>
+        <test>
+            <param name="tree" value="ancestry/tree.nwk"/>
+            <param name="states" value="ancestry/states-extra.tsv"/>
+            <param name="ancestral_states" value="ancestry/ancestral_states.tsv"/>
+            <param name="state_order" value="ancestry/state_order.tsv"/>
+            <param name="perm_replicates" value="3"/>
+            <param name="perm_chains" value="2"/>
+            <param name="perm_iterations" value="50000"/>
+            <param name="perm_burnin" value="10000"/>
+            <param name="perm_sample_period" value="100"/>
+            <expand macro="qc_test"/>
+            <output name="plasticity_test"><assert_contents><has_n_lines n="2"/><has_line_matching expression="pass\t(?:100(?:\.0*)?|[0-9]{1,2}(?:\.[0-9]+)?)\t[^\t]+\t[^\t]+\t[^\t]+\t(?:0(?:\.[0-9]+)?|1(?:\.0+)?)\t[^\t]+\t3\t3\tgreater"/></assert_contents></output>
+            <output name="transitions"><assert_contents><has_n_lines n="23"/></assert_contents></output>
+            <output name="permutations"><assert_contents><has_n_lines n="4"/></assert_contents></output>
+            <expand macro="runtime_test" command="plasticity"/>
+        </test>
+        <test>
+            <param name="tree" value="ancestry/tree.nwk"/>
+            <param name="states" value="ancestry/states-extra.tsv"/>
+            <param name="ancestral_states" value="ancestry/ancestral_states.tsv"/>
+            <param name="state_order" value="ancestry/state_order.tsv"/>
+            <param name="perm_replicates" value="0"/>
+            <param name="perm_chains" value="2"/>
+            <param name="perm_iterations" value="50000"/>
+            <param name="perm_burnin" value="10000"/>
+            <param name="perm_sample_period" value="100"/>
+            <expand macro="qc_test"/>
+            <output name="plasticity_test"><assert_contents><has_n_lines n="2"/><has_line_matching expression="not_requested\t[^\t]+\tNA\tNA\tNA\tNA\tNA\t0\t0\tgreater"/></assert_contents></output>
+            <output name="transitions"><assert_contents><has_n_lines n="23"/></assert_contents></output>
+            <output name="permutations"><assert_contents><has_n_lines n="1"/></assert_contents></output>
+            <expand macro="runtime_test" command="plasticity"/>
+        </test>
+
+    </tests>
+    <help><![CDATA[
+Map Plasticity over the original clone-tree collection and its corresponding
+ancestry collection. Keep collection identifiers and ordering aligned. Supply the
+same full states.tsv and state_order.tsv datasets for every mapped job. SPICE also
+checks tree/state fingerprints and observed/permutation QC compatibility.
+
+Production defaults request 1,000 permutations with three chains of one million
+iterations each. Every requested replicate must succeed before a valid P-value is
+reported. Zero permutations calculates observed plasticity only; significance is
+not_requested and NA. Submit the plasticity-test collection to SPICE Summarize.
+
+@BAYESTRAITS_HELP@
+
+@COMMON_HELP@
+    ]]></help>
+    <expand macro="citations"/>
+</tool>

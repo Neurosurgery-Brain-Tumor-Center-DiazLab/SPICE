@@ -1,0 +1,77 @@
+<macros>
+    <token name="@TOOL_VERSION@">0.2.0</token>
+    <token name="@VERSION_SUFFIX@">0</token>
+    <token name="@PROFILE@">25.0</token>
+    <xml name="requirements">
+        <requirements>
+            <requirement type="package" version="@TOOL_VERSION@">spice-lineage</requirement>
+        </requirements>
+    </xml>
+    <xml name="version_command">
+        <version_command>spice --version</version_command>
+    </xml>
+    <xml name="command">
+        <command detect_errors="aggressive"><![CDATA[
+unset PYTHONPATH PYTHONHOME && PYTHONNOUSERSITE=1 python '$__tool_directory__/run_spice.py' '$arguments'
+        ]]></command>
+    </xml>
+    <xml name="qc_inputs">
+        <section name="qc" title="Convergence, confidence and retry settings" expanded="false">
+            <param argument="--mcmc_seed" type="integer" value="12345" min="1" max="2147483646" label="BayesTraits seed"/>
+            <param argument="--rhat_threshold" type="float" value="1.01" min="1" label="Maximum modern R-hat (strictly greater than 1)"/>
+            <param argument="--bulk_ess_threshold" type="float" value="400" min="0" label="Minimum bulk ESS (positive)"/>
+            <param argument="--tail_ess_threshold" type="float" value="400" min="0" label="Minimum tail ESS (positive)"/>
+            <param argument="--max_retries" type="integer" value="2" min="0" label="Maximum fresh retries"/>
+            <param argument="--retry_multiplier" type="float" value="2" min="1" label="Retry multiplier (strictly greater than 1)"/>
+            <param argument="--effective_size_threshold" type="float" value="200" min="0" label="Legacy ESS reporting threshold (positive)"/>
+            <param argument="--psrf_threshold" type="float" value="1.1" min="1" label="Legacy PSRF reporting threshold"/>
+            <param argument="--min_ancestral_probability" type="float" value="0.9" min="0" max="1" label="Minimum ancestral posterior probability"/>
+            <param argument="--hyperprior" type="text" value="exp 0 10" label="BayesTraits HyperPriorAll specification">
+                <sanitizer sanitize="false"/>
+                <validator type="regex" message="Supply one nonempty command specification, without newlines or control characters">^[^\x00-\x1f\x7f]+$</validator>
+            </param>
+        </section>
+    </xml>
+    <token name="@QC_ARGUMENTS@"><![CDATA[
+#for $name in ('mcmc_seed', 'rhat_threshold', 'bulk_ess_threshold', 'tail_ess_threshold', 'max_retries', 'retry_multiplier', 'effective_size_threshold', 'psrf_threshold', 'min_ancestral_probability', 'hyperprior'):
+    #silent $argv.extend(['--' + $name, str($qc[$name])])
+#end for
+    ]]></token>
+    <xml name="qc_test">
+        <section name="qc">
+            <param name="rhat_threshold" value="1.2"/>
+            <param name="bulk_ess_threshold" value="20"/>
+            <param name="tail_ess_threshold" value="20"/>
+            <param name="effective_size_threshold" value="20"/>
+            <param name="psrf_threshold" value="1.2"/>
+            <param name="min_ancestral_probability" value="0.5"/>
+            <param name="max_retries" value="1"/>
+        </section>
+    </xml>
+    <xml name="runtime_test" token_command="">
+        <output name="runtime">
+            <assert_contents>
+                <has_json_property_with_value property="success" value="true"/>
+                <has_json_property_with_value property="command" value='"@COMMAND@"'/>
+                <has_text text="site-packages/spice_lineage"/>
+            </assert_contents>
+        </output>
+    </xml>
+    <xml name="citations">
+        <citations>
+            <citation type="bibtex">@misc{spice,
+                author = {Bohyeon Yu},
+                title = {SPICE: Single-cell Plasticity Inference and Clonal Evolution},
+                url = {https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE},
+                note = {Software version 0.2.0, unreleased}
+            }</citation>
+        </citations>
+    </xml>
+    <token name="@COMMON_HELP@">SPICE 0.2.0 is unreleased. Cite the software version and repository commit used.
+Production defaults match the installed SPICE CLI. Inspect runtime provenance and QC
+before interpreting results. The bundled synthetic test settings are execution tests,
+not recommended settings for scientific inference.</token>
+    <token name="@BAYESTRAITS_HELP@">BayesTraits V4.1.3 must be supplied by the Galaxy administrator through
+BAYESTRAITS_BIN or PATH. It is not bundled with SPICE or these tools. Every tree tip
+requires a state annotation; extra cells in the full states table are ignored by SPICE.</token>
+</macros>

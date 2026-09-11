@@ -61,6 +61,15 @@ The dedicated **SPICE Phase 5 Distribution** workflow is manual only; the
 existing required CI job remains unchanged. Check the
 [engineering handoff](docs/engineering-handoff.md) for observed results and blockers.
 
+### Galaxy staging
+
+Phase 6 adds native Filter, Clones, Ancestry, Plasticity and Summarize tools for
+Galaxy 25.0+, plus a clone-collection workflow using pinned IUC IQ-TREE 2.4.0.
+The wrappers run the installed local Conda package; BayesTraits is supplied by
+the server administrator. See the [Galaxy guide](docs/galaxy.md) and
+[synthetic tutorial draft](galaxy/training/tutorial.md). Tool Shed and GTN
+publication remain separate maintainer decisions; nothing has been uploaded.
+
 ### Install from local source or a built wheel
 
 The local Python distribution is named **spice-lineage**; the executable is

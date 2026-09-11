@@ -10,7 +10,7 @@ RUN micromamba install --yes --name base --file /tmp/runtime-linux-64.lock \
 
 FROM ${BASE_IMAGE}
 ARG SPICE_VERSION=0.2.0
-ARG SOURCE_REVISION=e6c23ca39f44a47a8351e49d642e977ad8a7f87b
+ARG SOURCE_REVISION=d0570d923d7880139a3f4c0a7a2b2e7ce65bc307
 ARG PACKAGE_SHA256
 LABEL org.opencontainers.image.title="SPICE" \
       org.opencontainers.image.version="${SPICE_VERSION}" \

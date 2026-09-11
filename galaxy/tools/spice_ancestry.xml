@@ -1,0 +1,76 @@
+<tool id="spice_ancestry" name="SPICE Ancestry" version="@TOOL_VERSION@+galaxy@VERSION_SUFFIX@" profile="@PROFILE@">
+    <description>infer ancestral cell states with convergence QC</description>
+    <macros><import>macros.xml</import></macros>
+    <expand macro="requirements"/>
+    <expand macro="version_command"/>
+    <expand macro="command"/>
+    <configfiles>
+        <configfile name="arguments"><![CDATA[
+#import json
+#set $tree_name = 'tree.nex' if str($tree.ext) == 'nex' else 'tree.nwk'
+#set $stage = [(str($tree), $tree_name)]
+#set $argv = ['ancestry', $tree_name, str($states), 'out', 'spice']
+#silent $argv.extend(['--mcmc_chains', str($mcmc_chains)])
+#silent $argv.extend(['--iterations', str($iterations)])
+#silent $argv.extend(['--burnin', str($burnin)])
+#silent $argv.extend(['--log_sample_period', str($log_sample_period)])
+#silent $argv.extend(['--stepping_stones', str($stepping_stones)])
+#silent $argv.extend(['--stone_iterations', str($stone_iterations)])
+#silent $argv.extend(['--threads', str($threads)])
+@QC_ARGUMENTS@
+${json.dumps({'argv': $argv, 'stage': $stage})}
+        ]]></configfile>
+    </configfiles>
+    <inputs>
+        <param name="tree" type="data" label="Rooted clone tree" format="nhx,nex"/>
+        <param name="states" type="data" label="Cell-state annotations (full table accepted)" format="tabular"/>
+        <param type="integer" label="Independent MCMC chains" argument="--mcmc_chains" value="3" min="2"/>
+        <param type="integer" label="Iterations per chain" argument="--iterations" value="1000000" min="1"/>
+        <param type="integer" label="Burn-in iterations" argument="--burnin" value="200000" min="0"/>
+        <param type="integer" label="Sampling period" argument="--log_sample_period" value="1000" min="1"/>
+        <param type="integer" label="Stepping stones (0 disables)" argument="--stepping_stones" value="10" min="0"/>
+        <param type="integer" label="Iterations per stepping stone" argument="--stone_iterations" value="1000" min="1"/>
+        <param type="integer" label="Parallel chains" argument="--threads" value="3" min="1"/>
+        <expand macro="qc_inputs"/>
+    </inputs>
+    <outputs>
+        <data name="ancestral_states" format="tabular" from_work_dir="out/spice.ancestral_states.tsv" label="${tool.name} on ${on_string}: ancestral state probabilities"/>
+        <data name="diagnostics" format="tabular" from_work_dir="out/spice.mcmc_diagnostics.tsv" label="${tool.name} on ${on_string}: MCMC diagnostics"/>
+        <data name="qc_status" format="tabular" from_work_dir="out/spice.qc_status.tsv" label="${tool.name} on ${on_string}: QC status"/>
+        <data name="qc_attempts" format="tabular" from_work_dir="out/spice.qc_attempts.tsv" label="${tool.name} on ${on_string}: QC attempts"/>
+        <data name="state_mapping" format="tabular" from_work_dir="out/spice.state_mapping.tsv" label="${tool.name} on ${on_string}: state coding"/>
+        <data name="run_info" format="tabular" from_work_dir="out/spice.ancestry_run_info.tsv" label="${tool.name} on ${on_string}: run settings"/>
+        <data name="runtime" format="json" from_work_dir="out/spice.runtime.json" label="${tool.name} on ${on_string}: runtime provenance"/>
+    </outputs>
+    <tests>
+        <test>
+            <param name="tree" value="ancestry/tree.nwk"/>
+            <param name="states" value="ancestry/states-extra.tsv"/>
+            <param name="mcmc_chains" value="2"/>
+            <param name="iterations" value="50000"/>
+            <param name="burnin" value="10000"/>
+            <param name="log_sample_period" value="100"/>
+            <param name="stepping_stones" value="0"/>
+            <param name="threads" value="1"/>
+            <expand macro="qc_test"/>
+            <output name="ancestral_states"><assert_contents><has_n_lines n="12"/><has_text text="posterior_state_0"/><has_text text="tree_md5"/><has_text text="constant-probabilities-v1"/></assert_contents></output>
+            <output name="qc_status"><assert_contents><has_text_matching expression="status\tpassed"/><has_text_matching expression="run_qc_pass\tTRUE"/></assert_contents></output>
+            <assert_stderr><has_text text="state-table cell(s) not present"/></assert_stderr>
+            <expand macro="runtime_test" command="ancestry"/>
+        </test>
+    </tests>
+    <help><![CDATA[
+Map this tool over the SPICE Clones list of rooted trees. Supply the same full
+states.tsv dataset for every clone. The resulting ancestry collection retains
+clone identifiers and must be paired with the original trees in Plasticity.
+
+Production defaults use three chains, one million iterations, 200,000 burn-in,
+sampling every 1,000 and ten stepping stones. Convergence, retries, node confidence
+and model-QC blocking remain entirely under SPICE's existing policy.
+
+@BAYESTRAITS_HELP@
+
+@COMMON_HELP@
+    ]]></help>
+    <expand macro="citations"/>
+</tool>

@@ -73,13 +73,18 @@ def inspect_artifacts(wheel, sdist):
         "ci/integration-linux-64.lock", "scripts/check_integration.py",
         ".github/workflows/integration.yml", ".github/workflows/distribution.yml",
         "scripts/check_distribution.py", "ci/distribution-environment.yml",
-        "ci/distribution-linux-64.lock",
+        "ci/distribution-linux-64.lock", "scripts/check_galaxy.py",
+        "ci/requirements-galaxy.txt", "ci/galaxy-build-constraints.txt",
+        "galaxy/tools/.shed.yml",
     }
     for pattern in ("docs/*.md", "tests/*.py", "tests/*.R",
                     "tests/integration/**/*.py", "tests/integration/**/*.R",
                     "tests/integration/**/*.md", "tests/integration/**/*.tsv",
                     "tests/integration/**/*.nwk", "tests/distribution/**/*.py",
                     "tests/distribution/**/*.md", "tests/distribution/**/*.nwk",
+                    "galaxy/**/*.xml", "galaxy/**/*.py", "galaxy/**/*.yml",
+                    "galaxy/**/*.ga", "galaxy/**/*.md", "galaxy/**/*.tsv",
+                    "galaxy/**/*.csv", "galaxy/**/*.fasta", "galaxy/**/*.nwk",
                     "packaging/**/*.yaml", "packaging/**/*.md", "packaging/**/Containerfile"):
         source_files.update(p.relative_to(ROOT).as_posix() for p in ROOT.glob(pattern))
     generated = {"PKG-INFO", "setup.cfg"} | {"spice_lineage.egg-info/" + p for p in (

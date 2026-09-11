@@ -46,8 +46,14 @@ spice_read_tree <- function(tree_file) {
 # BayesTraits V4 requires NEXUS; SPICE also accepts Newick.
 # Keep the original tree for node IDs, fingerprints and scientific calculations.
 spice_bt_tree_input <- function(tree_file, tree, converted_file) {
-  if (tolower(tools::file_ext(tree_file)) %in% c("nex", "nexus")) return(tree_file)
-  ape::write.nexus(tree, file=converted_file, digits=17)
+  if (tolower(tools::file_ext(tree_file)) %in% c("nex", "nexus") &&
+      is.null(tree$node.label)) return(tree_file)
+  # V4's NEXUS parser misreads IQ-TREE support labels as part of the tree.
+  # These are metadata, not taxa or branch lengths. Remove them only from the
+  # temporary subprocess copy; retain the original for IDs and fingerprints.
+  bt_tree <- tree
+  bt_tree$node.label <- NULL
+  ape::write.nexus(bt_tree, file=converted_file, digits=17)
   converted_file
 }
 

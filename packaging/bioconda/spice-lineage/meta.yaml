@@ -3,8 +3,8 @@ package:
   version: "0.2.0"
 
 source:
-  url: https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/archive/e6c23ca39f44a47a8351e49d642e977ad8a7f87b.tar.gz
-  sha256: 0102b4896cdb8bcaa4a1bcda22cf373d195b462863c01c0d8408b74c2a00257f
+  url: https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/archive/d0570d923d7880139a3f4c0a7a2b2e7ce65bc307.tar.gz
+  sha256: 47ab47321d96bb09c5c2089a0155a029e415610929fef43aa8522f51d6fb703b
 
 build:
   number: 0

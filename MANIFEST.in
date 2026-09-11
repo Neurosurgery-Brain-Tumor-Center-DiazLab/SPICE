@@ -16,3 +16,7 @@ include scripts/check_distribution.py
 include .github/workflows/distribution.yml
 recursive-include packaging *.yaml *.md Containerfile
 recursive-include tests/distribution *.py *.md *.nwk
+
+include scripts/check_galaxy.py
+recursive-include galaxy *.xml *.py *.yml *.ga *.md *.tsv *.csv *.fasta *.nwk
+include galaxy/tools/.shed.yml

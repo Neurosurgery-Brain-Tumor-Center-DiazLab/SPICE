@@ -197,3 +197,18 @@ image, reusing committed synthetic inputs and independent R tree assertions.
 It includes IQ-TREE and verifies BayesTraits is absent; it does not replace
 this suite's real BayesTraits execution. Both manual workflows are non-required
 for branch protection but their successful runs are Phase 5 acceptance gates.
+
+## Phase 6 Galaxy staging
+
+The [Galaxy guide](galaxy.md) documents five native wrappers and a collection
+workflow pinned to IUC IQ-TREE 2.4.0. The existing manual integration workflow
+retains the real scientific job and adds a separate Galaxy job. It builds and
+checks this unpublished local Conda package before resolving Galaxy dependencies
+from its file channel. BayesTraits remains temporary and external. Normal
+required CI does not start Galaxy. Tool Shed/GTN and public package/container
+publication remain separate maintainer decisions.
+
+The suite additionally checks IQ-TREE-style internal support labels in both
+Newick and NEXUS ancestry inputs. BayesTraits receives a temporary copy without
+internal label metadata; original tree bytes/fingerprints and exact seeded
+ancestry output are asserted unchanged relative to the unlabeled reference.

@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+- Fix BayesTraits V4 parsing of IQ-TREE-supported clone trees by omitting internal
+  support-label metadata only from the temporary NEXUS subprocess copy. Preserve
+  the original input/supports, node identities, rooted topology, branch lengths,
+  fingerprints and scientific calculations. Add Newick/NEXUS invariance and
+  real installed-wheel seeded ancestry equivalence regressions.
+
+- Stage five native Galaxy 25.0 wrappers (0.2.0+galaxy0), shared metadata,
+  synthetic Planemo tests and a clone-collection workflow using pinned IUC
+  IQ-TREE 2.4.0+galaxy2, changeset e727e82945af. Ancestry/plasticity retain
+  aligned clone identifiers through the existing SPICE BH summary. Pin BIC
+  explicitly in the IUC workflow to preserve SPICE's IQ-TREE model selection.
+- Add external local-Conda Galaxy validation and a separate manual Galaxy job
+  to the existing integration workflow. BayesTraits is officially acquired,
+  checksum-verified and removed; server deployment needs an administrator's
+  executable. Required PR CI remains fast with static/default/manifest checks.
+- Add Tool Shed staging metadata and a repository-local GTN-style tutorial
+  draft. Keep 0.2.0 unreleased; scientific methods/defaults and output schemas
+  are unchanged. No Tool Shed, GTN, package, container, release or tag publication.
+
 - Stage classic Bioconda-style Conda packaging from a checksum-pinned Phase 4
   commit archive and an OCI image consuming the locally built Conda artifact.
   Include R 4.3-compatible runtime dependencies and IQ-TREE 2.x; BayesTraits
@@ -13,7 +32,7 @@
   and retain only text distribution evidence. Production Python/R code,
   scientific algorithms/defaults and the required status name are unchanged.
 - Document local channel/container use and eventual Bioconda/BioContainer
-  submission. Keep 0.2.0 unreleased; no package/image, release/tag or Galaxy work.
+  submission. Keep 0.2.0 unreleased; no package/image, release/tag publication.
 
 - Add `spice clones --tree TREE --output_directory DIR --prefix SAMPLE` and
   equivalent legacy-wrapper support. It classifies an existing IQ-TREE Newick
@@ -26,7 +45,7 @@
   installed-wheel combined-versus-standalone equivalence checks using an
   arbitrary external tree path containing spaces. Reuse the manual-only
   **SPICE Phase 3 Integration** workflow; required CI is unchanged.
-- Keep 0.2.0 unreleased. No Galaxy wrappers or package/container publication.
+- Keep 0.2.0 unreleased. No package/container publication.
 
 - Add real IQ-TREE 2.4.0 / BayesTraits V4.1.3 integration through an external,
   non-editable wheel install, committed synthetic fixtures, strict output/QC/

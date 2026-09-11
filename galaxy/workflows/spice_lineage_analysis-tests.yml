@@ -1,0 +1,72 @@
+- doc: 'Complete synthetic workflow: three mapped clones, real BayesTraits ancestry
+    and three permutations per clone.'
+  job: spice_lineage_analysis-job.yml
+  outputs:
+    summary:
+      asserts:
+      - that: has_n_lines
+        n: 4
+      - that: has_text
+        text: q_value
+      - that: has_text
+        text: Clone_1
+      - that: has_text
+        text: Clone_2
+      - that: has_text
+        text: Clone_3
+    clone_trees:
+      element_tests:
+        Clone_1:
+          asserts:
+          - that: has_text_matching
+            expression: '\([ABC][1-4]:'
+        Clone_2:
+          asserts:
+          - that: has_text_matching
+            expression: '\([ABC][1-4]:'
+        Clone_3:
+          asserts:
+          - that: has_text_matching
+            expression: '\([ABC][1-4]:'
+    ancestry_qc:
+      element_tests:
+        Clone_1:
+          asserts:
+          - that: has_text_matching
+            expression: run_qc_pass\tTRUE
+        Clone_2:
+          asserts:
+          - that: has_text_matching
+            expression: run_qc_pass\tTRUE
+        Clone_3:
+          asserts:
+          - that: has_text_matching
+            expression: run_qc_pass\tTRUE
+    plasticity_tests:
+      element_tests:
+        Clone_1:
+          asserts:
+          - that: has_n_lines
+            n: 2
+          - that: has_line_matching
+            expression: pass\t(?:100(?:\.0*)?|[0-9]{1,2}(?:\.[0-9]+)?)\t[^\t]+\t[^\t]+\t[^\t]+\t(?:0(?:\.[0-9]+)?|1(?:\.0+)?)\t[^\t]+\t3\t3\tgreater
+        Clone_2:
+          asserts:
+          - that: has_n_lines
+            n: 2
+          - that: has_line_matching
+            expression: pass\t(?:100(?:\.0*)?|[0-9]{1,2}(?:\.[0-9]+)?)\t[^\t]+\t[^\t]+\t[^\t]+\t(?:0(?:\.[0-9]+)?|1(?:\.0+)?)\t[^\t]+\t3\t3\tgreater
+        Clone_3:
+          asserts:
+          - that: has_n_lines
+            n: 2
+          - that: has_line_matching
+            expression: pass\t(?:100(?:\.0*)?|[0-9]{1,2}(?:\.[0-9]+)?)\t[^\t]+\t[^\t]+\t[^\t]+\t(?:0(?:\.[0-9]+)?|1(?:\.0+)?)\t[^\t]+\t3\t3\tgreater
+    iqtree_report:
+      asserts:
+      - that: has_text
+        text: IQ-TREE 2.4.0
+      - that: has_text
+        text: SH-aLRT
+      - that: has_text
+        text: ultrafast bootstrap

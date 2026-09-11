@@ -1,0 +1,2 @@
+test_status	observed_plasticity	empirical_p	alternative	n_permutations_requested	n_permutations_successful
+pass	25	0.01	greater	100	100

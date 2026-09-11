@@ -1,0 +1,210 @@
+class: GalaxyWorkflow
+format-version: v2.0
+name: SPICE lineage analysis (IQ-TREE 2.4.0)
+doc: Unreleased SPICE 0.2.0 Galaxy workflow. Native IQ-TREE 2.4.0; clone collections preserve
+  identity through ancestry, plasticity and BH summaries. BayesTraits is administrator-provided.
+  Production defaults are distinct from the synthetic test job.
+license: GPL-3.0-only
+creator:
+- class: Person
+  name: Bohyeon Yu
+inputs:
+  matrix:
+    type: data
+    doc: 'Standard matrix.tsv: cells by variants, REF/ALT counts'
+  variants:
+    type: data
+    doc: Standard variants.tsv metadata
+  cells:
+    type: data
+    doc: Standard cells.tsv metadata
+  states:
+    type: data
+    doc: Full states.tsv cell-state annotations
+  state_order:
+    type: data
+    doc: Biological state_order.tsv
+  min_alt_cells_per_snv:
+    type: int
+    default: 5
+    doc: Minimum ALT-supporting cells per variant
+  min_snvs_per_cell:
+    type: int
+    default: 5
+    doc: Minimum variants per cell
+  min_tips:
+    type: int
+    default: 50
+    doc: Minimum tips per exported clone
+  outgroup:
+    type: text
+    default: ''
+    doc: Outgroup tip names, comma-separated; blank uses midpoint rooting
+  model:
+    type: text
+    default: TEST
+    doc: IQ-TREE model; TEST is the SPICE default
+  chains:
+    type: int
+    default: 3
+    doc: MCMC chains for observed and permutation ancestry
+  iterations:
+    type: int
+    default: 1000000
+    doc: MCMC iterations per chain
+  burnin:
+    type: int
+    default: 200000
+    doc: MCMC burn-in iterations
+  sample_period:
+    type: int
+    default: 1000
+    doc: MCMC sampling period
+  ancestry_stones:
+    type: int
+    default: 10
+    doc: Stepping stones for observed ancestry
+  permutations:
+    type: int
+    default: 1000
+    doc: Permutation replicates
+  rhat_threshold:
+    type: float
+    default: 1.01
+    doc: Strict maximum modern R-hat
+  bulk_ess_threshold:
+    type: float
+    default: 400
+    doc: Minimum pooled bulk ESS
+  tail_ess_threshold:
+    type: float
+    default: 400
+    doc: Minimum pooled tail ESS
+  posterior_cutoff:
+    type: float
+    default: 0.9
+    doc: Minimum ancestral posterior probability
+  clone_cut_mode:
+    type: text
+    default: auto
+    doc: 'Clone cutoff selection: auto or manual'
+  clone_cut_threshold:
+    type: float
+    optional: true
+    doc: Manual clone cutoff; leave unset for automatic selection
+outputs:
+  summary:
+    outputSource: summarize/summary
+  clone_assignments:
+    outputSource: clones/assignments
+  clone_trees:
+    outputSource: clones/clone_trees
+  ancestry:
+    outputSource: ancestry/ancestral_states
+  plasticity_tests:
+    outputSource: plasticity/plasticity_test
+  ancestry_qc:
+    outputSource: ancestry/qc_status
+  iqtree_report:
+    outputSource: iqtree/iqtree
+  ancestry_runtime:
+    outputSource: ancestry/runtime
+  plasticity_runtime:
+    outputSource: plasticity/runtime
+steps:
+  filter:
+    tool_id: spice_filter
+    tool_version: 0.2.0+galaxy0
+    in:
+      matrix: matrix
+      variants: variants
+      cells: cells
+      min_alt_cells_per_snv: min_alt_cells_per_snv
+      min_snvs_per_cell: min_snvs_per_cell
+    state:
+      variant_qc: auto
+    doc: Stage the standard bundle and run installed SPICE filtering.
+  iqtree:
+    tool_id: toolshed.g2.bx.psu.edu/repos/iuc/iqtree/iqtree/2.4.0+galaxy2
+    tool_version: 2.4.0+galaxy2
+    tool_shed_repository:
+      tool_shed: toolshed.g2.bx.psu.edu
+      name: iqtree
+      owner: iuc
+      changeset_revision: e727e82945af
+    in:
+      general_options|s: filter/fasta
+      general_options|o: outgroup
+      modelling_parameters|automatic_model|cond_model|m: model
+    state:
+      general_options:
+        seqtype: DNA
+        short_alignments: true
+        seed: 12345
+      modelling_parameters:
+        automatic_model:
+          merit: BIC
+          cond_model:
+            opt_custommodel: 'true'
+      tree_parameters:
+        single_branch:
+          alrt: 1000
+      bootstrap_parameters:
+        ultrafast_bootstrap:
+          ufboot: 1000
+    doc: Pinned IUC IQ-TREE 2.4.0, DNA, 1000 UFBoot and 1000 SH-aLRT; supported treefile output.
+  clones:
+    tool_id: spice_clones
+    tool_version: 0.2.0+galaxy0
+    in:
+      tree: iqtree/treefile
+      min_tips: min_tips
+      outgroup: outgroup
+      clone_cut_mode: clone_cut_mode
+      clone_cut_threshold: clone_cut_threshold
+    state:
+      root_method: midpoint
+    doc: Run SPICE clone classification and discover Clone_N Newick files as a list.
+  ancestry:
+    tool_id: spice_ancestry
+    tool_version: 0.2.0+galaxy0
+    in:
+      tree: clones/clone_trees
+      states: states
+      mcmc_chains: chains
+      iterations: iterations
+      burnin: burnin
+      log_sample_period: sample_period
+      stepping_stones: ancestry_stones
+      qc|rhat_threshold: rhat_threshold
+      qc|bulk_ess_threshold: bulk_ess_threshold
+      qc|tail_ess_threshold: tail_ess_threshold
+      qc|min_ancestral_probability: posterior_cutoff
+    doc: Map rooted clone trees to ancestry, reusing the full states table and retaining clone
+      identifiers.
+  plasticity:
+    tool_id: spice_plasticity
+    tool_version: 0.2.0+galaxy0
+    in:
+      tree: clones/clone_trees
+      states: states
+      ancestral_states: ancestry/ancestral_states
+      state_order: state_order
+      perm_chains: chains
+      perm_iterations: iterations
+      perm_burnin: burnin
+      perm_sample_period: sample_period
+      perm_replicates: permutations
+      qc|rhat_threshold: rhat_threshold
+      qc|bulk_ess_threshold: bulk_ess_threshold
+      qc|tail_ess_threshold: tail_ess_threshold
+      qc|min_ancestral_probability: posterior_cutoff
+    doc: Map aligned clone trees and ancestry results, preserving clone identifiers and mandatory
+      QC.
+  summarize:
+    tool_id: spice_summarize
+    tool_version: 0.2.0+galaxy0
+    in:
+      plasticity_tests: plasticity/plasticity_test
+    doc: Aggregate the per-clone plasticity-test collection with the existing SPICE BH summary
+      command.

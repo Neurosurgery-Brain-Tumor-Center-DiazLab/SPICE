@@ -1,0 +1,55 @@
+<tool id="spice_summarize" name="SPICE Summarize" version="@TOOL_VERSION@+galaxy@VERSION_SUFFIX@" profile="@PROFILE@">
+    <description>combine clone tests with BH FDR correction</description>
+    <macros><import>macros.xml</import></macros>
+    <expand macro="requirements"/>
+    <expand macro="version_command"/>
+    <expand macro="command"/>
+    <configfiles>
+        <configfile name="arguments"><![CDATA[
+#import json
+#set $elements = []
+#for $element in $plasticity_tests:
+    #silent $elements.append((str($element.element_identifier), str($element)))
+#end for
+${json.dumps({'argv': ['summarize', 'clone-tests.tsv', 'out/summary.tsv', '--alpha', str($alpha)], 'collection': $elements})}
+        ]]></configfile>
+    </configfiles>
+    <inputs>
+        <param name="plasticity_tests" type="data_collection" label="Per-clone plasticity-test collection" format="tabular" collection_type="list"/>
+        <param type="float" label="BH FDR significance cutoff" argument="--alpha" value="0.05" min="0" max="1"/>
+    </inputs>
+    <outputs>
+        <data name="summary" format="tabular" from_work_dir="out/summary.tsv" label="${tool.name} on ${on_string}: clone-level BH summary"/>
+        <data name="runtime" format="json" from_work_dir="out/summary.tsv.runtime.json" label="${tool.name} on ${on_string}: runtime provenance"/>
+    </outputs>
+    <tests>
+        <test>
+            <param name="plasticity_tests">
+                <collection type="list">
+                    <element name="Clone_1" value="summary/one.tsv"/>
+                    <element name="Clone_2" value="summary/two.tsv"/>
+                </collection>
+            </param>
+            <output name="summary"><assert_contents>
+                <has_n_lines n="3"/>
+                <has_line_matching expression="Clone_1\t[^\t]+\tpass\t25\t0.01\tgreater\t0.02\tTrue\t2\r?"/>
+                <has_line_matching expression="Clone_2\t[^\t]+\tpass\t50\t0.2\tgreater\t0.2\tFalse\t2\r?"/>
+            </assert_contents></output>
+            <expand macro="runtime_test" command="summarize"/>
+        </test>
+    </tests>
+    <help><![CDATA[
+Supply the list collection of plasticity_test datasets from mapped Plasticity.
+Element identifiers become clone_id values in a temporary TSV manifest. Identifiers
+are preserved literally; empty/duplicate IDs, control characters and boundary
+whitespace are rejected because they cannot be represented faithfully by SPICE.
+The existing spice summarize command performs the entire BH calculation.
+
+Use the full planned clone family. Failed, missing or unrequested tests remain in
+the family using p=1 internally; displayed significance remains unavailable. A
+permutation P-value does not itself establish biological plasticity.
+
+@COMMON_HELP@
+    ]]></help>
+    <expand macro="citations"/>
+</tool>

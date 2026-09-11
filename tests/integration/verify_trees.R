@@ -1,7 +1,7 @@
 args <- commandArgs(trailingOnly=TRUE)
 library(ape)
 if (length(args) == 3) {
-  original <- read.tree(args[2])
+  original <- if (tolower(tools::file_ext(args[2])) %in% c("nex","nexus")) read.nexus(args[2]) else read.tree(args[2])
   converted <- read.nexus(args[3])
   stopifnot(is.rooted(converted), identical(original$tip.label, converted$tip.label),
             isTRUE(all.equal.phylo(original, converted, use.edge.length=TRUE, tolerance=1e-14)),

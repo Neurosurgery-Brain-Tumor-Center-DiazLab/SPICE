@@ -1,0 +1,897 @@
+{
+  "name": "SPICE lineage analysis (IQ-TREE 2.4.0)",
+  "a_galaxy_workflow": "true",
+  "format-version": "0.1",
+  "annotation": "Unreleased SPICE 0.2.0 Galaxy workflow. Native IQ-TREE 2.4.0; clone collections preserve identity through ancestry, plasticity and BH summaries. BayesTraits is administrator-provided. Production defaults are distinct from the synthetic test job.",
+  "tags": [],
+  "license": "GPL-3.0-only",
+  "uuid": "9a67990e-bc24-40b5-a8fb-54e338de73dc",
+  "creator": [
+    {
+      "name": "Bohyeon Yu",
+      "class": "Person"
+    }
+  ],
+  "comments": [],
+  "steps": {
+    "0": {
+      "id": 0,
+      "name": "matrix",
+      "type": "data_input",
+      "label": "matrix",
+      "annotation": "Standard matrix.tsv: cells by variants, REF/ALT counts",
+      "tool_state": "{\"name\": \"matrix\"}",
+      "position": {
+        "top": 0,
+        "left": 0
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "matrix",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "1": {
+      "id": 1,
+      "name": "variants",
+      "type": "data_input",
+      "label": "variants",
+      "annotation": "Standard variants.tsv metadata",
+      "tool_state": "{\"name\": \"variants\"}",
+      "position": {
+        "top": 10,
+        "left": 10
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "variants",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "2": {
+      "id": 2,
+      "name": "cells",
+      "type": "data_input",
+      "label": "cells",
+      "annotation": "Standard cells.tsv metadata",
+      "tool_state": "{\"name\": \"cells\"}",
+      "position": {
+        "top": 20,
+        "left": 20
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "cells",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "3": {
+      "id": 3,
+      "name": "states",
+      "type": "data_input",
+      "label": "states",
+      "annotation": "Full states.tsv cell-state annotations",
+      "tool_state": "{\"name\": \"states\"}",
+      "position": {
+        "top": 30,
+        "left": 30
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "states",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "4": {
+      "id": 4,
+      "name": "state_order",
+      "type": "data_input",
+      "label": "state_order",
+      "annotation": "Biological state_order.tsv",
+      "tool_state": "{\"name\": \"state_order\"}",
+      "position": {
+        "top": 40,
+        "left": 40
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "state_order",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "5": {
+      "id": 5,
+      "name": "min_alt_cells_per_snv",
+      "type": "parameter_input",
+      "label": "min_alt_cells_per_snv",
+      "annotation": "Minimum ALT-supporting cells per variant",
+      "tool_state": "{\"name\": \"min_alt_cells_per_snv\", \"parameter_type\": \"integer\", \"default\": 5}",
+      "position": {
+        "top": 50,
+        "left": 50
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "min_alt_cells_per_snv",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "6": {
+      "id": 6,
+      "name": "min_snvs_per_cell",
+      "type": "parameter_input",
+      "label": "min_snvs_per_cell",
+      "annotation": "Minimum variants per cell",
+      "tool_state": "{\"name\": \"min_snvs_per_cell\", \"parameter_type\": \"integer\", \"default\": 5}",
+      "position": {
+        "top": 60,
+        "left": 60
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "min_snvs_per_cell",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "7": {
+      "id": 7,
+      "name": "min_tips",
+      "type": "parameter_input",
+      "label": "min_tips",
+      "annotation": "Minimum tips per exported clone",
+      "tool_state": "{\"name\": \"min_tips\", \"parameter_type\": \"integer\", \"default\": 50}",
+      "position": {
+        "top": 70,
+        "left": 70
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "min_tips",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "8": {
+      "id": 8,
+      "name": "outgroup",
+      "type": "parameter_input",
+      "label": "outgroup",
+      "annotation": "Outgroup tip names, comma-separated; blank uses midpoint rooting",
+      "tool_state": "{\"name\": \"outgroup\", \"parameter_type\": \"text\", \"default\": \"\"}",
+      "position": {
+        "top": 80,
+        "left": 80
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "outgroup",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "9": {
+      "id": 9,
+      "name": "model",
+      "type": "parameter_input",
+      "label": "model",
+      "annotation": "IQ-TREE model; TEST is the SPICE default",
+      "tool_state": "{\"name\": \"model\", \"parameter_type\": \"text\", \"default\": \"TEST\"}",
+      "position": {
+        "top": 90,
+        "left": 90
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "model",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "10": {
+      "id": 10,
+      "name": "chains",
+      "type": "parameter_input",
+      "label": "chains",
+      "annotation": "MCMC chains for observed and permutation ancestry",
+      "tool_state": "{\"name\": \"chains\", \"parameter_type\": \"integer\", \"default\": 3}",
+      "position": {
+        "top": 100,
+        "left": 100
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "chains",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "11": {
+      "id": 11,
+      "name": "iterations",
+      "type": "parameter_input",
+      "label": "iterations",
+      "annotation": "MCMC iterations per chain",
+      "tool_state": "{\"name\": \"iterations\", \"parameter_type\": \"integer\", \"default\": 1000000}",
+      "position": {
+        "top": 110,
+        "left": 110
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "iterations",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "12": {
+      "id": 12,
+      "name": "burnin",
+      "type": "parameter_input",
+      "label": "burnin",
+      "annotation": "MCMC burn-in iterations",
+      "tool_state": "{\"name\": \"burnin\", \"parameter_type\": \"integer\", \"default\": 200000}",
+      "position": {
+        "top": 120,
+        "left": 120
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "burnin",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "13": {
+      "id": 13,
+      "name": "sample_period",
+      "type": "parameter_input",
+      "label": "sample_period",
+      "annotation": "MCMC sampling period",
+      "tool_state": "{\"name\": \"sample_period\", \"parameter_type\": \"integer\", \"default\": 1000}",
+      "position": {
+        "top": 130,
+        "left": 130
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "sample_period",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "14": {
+      "id": 14,
+      "name": "ancestry_stones",
+      "type": "parameter_input",
+      "label": "ancestry_stones",
+      "annotation": "Stepping stones for observed ancestry",
+      "tool_state": "{\"name\": \"ancestry_stones\", \"parameter_type\": \"integer\", \"default\": 10}",
+      "position": {
+        "top": 140,
+        "left": 140
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "ancestry_stones",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "15": {
+      "id": 15,
+      "name": "permutations",
+      "type": "parameter_input",
+      "label": "permutations",
+      "annotation": "Permutation replicates",
+      "tool_state": "{\"name\": \"permutations\", \"parameter_type\": \"integer\", \"default\": 1000}",
+      "position": {
+        "top": 150,
+        "left": 150
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "permutations",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "16": {
+      "id": 16,
+      "name": "rhat_threshold",
+      "type": "parameter_input",
+      "label": "rhat_threshold",
+      "annotation": "Strict maximum modern R-hat",
+      "tool_state": "{\"name\": \"rhat_threshold\", \"parameter_type\": \"float\", \"default\": 1.01}",
+      "position": {
+        "top": 160,
+        "left": 160
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "rhat_threshold",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "17": {
+      "id": 17,
+      "name": "bulk_ess_threshold",
+      "type": "parameter_input",
+      "label": "bulk_ess_threshold",
+      "annotation": "Minimum pooled bulk ESS",
+      "tool_state": "{\"name\": \"bulk_ess_threshold\", \"parameter_type\": \"float\", \"default\": 400}",
+      "position": {
+        "top": 170,
+        "left": 170
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "bulk_ess_threshold",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "18": {
+      "id": 18,
+      "name": "tail_ess_threshold",
+      "type": "parameter_input",
+      "label": "tail_ess_threshold",
+      "annotation": "Minimum pooled tail ESS",
+      "tool_state": "{\"name\": \"tail_ess_threshold\", \"parameter_type\": \"float\", \"default\": 400}",
+      "position": {
+        "top": 180,
+        "left": 180
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "tail_ess_threshold",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "19": {
+      "id": 19,
+      "name": "posterior_cutoff",
+      "type": "parameter_input",
+      "label": "posterior_cutoff",
+      "annotation": "Minimum ancestral posterior probability",
+      "tool_state": "{\"name\": \"posterior_cutoff\", \"parameter_type\": \"float\", \"default\": 0.9}",
+      "position": {
+        "top": 190,
+        "left": 190
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "posterior_cutoff",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "20": {
+      "id": 20,
+      "name": "clone_cut_mode",
+      "type": "parameter_input",
+      "label": "clone_cut_mode",
+      "annotation": "Clone cutoff selection: auto or manual",
+      "tool_state": "{\"name\": \"clone_cut_mode\", \"parameter_type\": \"text\", \"default\": \"auto\"}",
+      "position": {
+        "top": 200,
+        "left": 200
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "clone_cut_mode",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "21": {
+      "id": 21,
+      "name": "clone_cut_threshold",
+      "type": "parameter_input",
+      "label": "clone_cut_threshold",
+      "annotation": "Manual clone cutoff; leave unset for automatic selection",
+      "tool_state": "{\"name\": \"clone_cut_threshold\", \"parameter_type\": \"float\", \"optional\": true}",
+      "position": {
+        "top": 210,
+        "left": 210
+      },
+      "input_connections": {},
+      "inputs": [
+        {
+          "name": "clone_cut_threshold",
+          "description": ""
+        }
+      ],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "22": {
+      "id": 22,
+      "name": "spice_filter",
+      "type": "tool",
+      "label": "filter",
+      "annotation": "Stage the standard bundle and run installed SPICE filtering.",
+      "tool_state": "{\"__page__\": 0, \"variant_qc\": \"auto\"}",
+      "tool_id": "spice_filter",
+      "tool_version": "0.2.0+galaxy0",
+      "position": {
+        "top": 220,
+        "left": 220
+      },
+      "input_connections": {
+        "matrix": [
+          {
+            "id": 0,
+            "output_name": "output"
+          }
+        ],
+        "variants": [
+          {
+            "id": 1,
+            "output_name": "output"
+          }
+        ],
+        "cells": [
+          {
+            "id": 2,
+            "output_name": "output"
+          }
+        ],
+        "min_alt_cells_per_snv": [
+          {
+            "id": 5,
+            "output_name": "output"
+          }
+        ],
+        "min_snvs_per_cell": [
+          {
+            "id": 6,
+            "output_name": "output"
+          }
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "workflow_outputs": [],
+      "post_job_actions": {}
+    },
+    "23": {
+      "id": 23,
+      "name": "toolshed.g2.bx.psu.edu/repos/iuc/iqtree/iqtree/2.4.0+galaxy2",
+      "type": "tool",
+      "label": "iqtree",
+      "annotation": "Pinned IUC IQ-TREE 2.4.0, DNA, 1000 UFBoot and 1000 SH-aLRT; supported treefile output.",
+      "tool_state": "{\"__page__\": 0, \"general_options\": {\"seqtype\": \"DNA\", \"short_alignments\": true, \"seed\": 12345}, \"modelling_parameters\": {\"automatic_model\": {\"merit\": \"BIC\", \"cond_model\": {\"opt_custommodel\": \"true\"}}}, \"tree_parameters\": {\"single_branch\": {\"alrt\": 1000}}, \"bootstrap_parameters\": {\"ultrafast_bootstrap\": {\"ufboot\": 1000}}}",
+      "tool_id": "toolshed.g2.bx.psu.edu/repos/iuc/iqtree/iqtree/2.4.0+galaxy2",
+      "tool_version": "2.4.0+galaxy2",
+      "tool_shed_repository": {
+        "name": "iqtree",
+        "changeset_revision": "e727e82945af",
+        "owner": "iuc",
+        "tool_shed": "toolshed.g2.bx.psu.edu"
+      },
+      "position": {
+        "top": 230,
+        "left": 230
+      },
+      "input_connections": {
+        "general_options|s": [
+          {
+            "id": 22,
+            "output_name": "fasta"
+          }
+        ],
+        "general_options|o": [
+          {
+            "id": 8,
+            "output_name": "output"
+          }
+        ],
+        "modelling_parameters|automatic_model|cond_model|m": [
+          {
+            "id": 9,
+            "output_name": "output"
+          }
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "workflow_outputs": [
+        {
+          "label": "iqtree_report",
+          "output_name": "iqtree"
+        }
+      ],
+      "post_job_actions": {}
+    },
+    "24": {
+      "id": 24,
+      "name": "spice_clones",
+      "type": "tool",
+      "label": "clones",
+      "annotation": "Run SPICE clone classification and discover Clone_N Newick files as a list.",
+      "tool_state": "{\"__page__\": 0, \"root_method\": \"midpoint\"}",
+      "tool_id": "spice_clones",
+      "tool_version": "0.2.0+galaxy0",
+      "position": {
+        "top": 240,
+        "left": 240
+      },
+      "input_connections": {
+        "tree": [
+          {
+            "id": 23,
+            "output_name": "treefile"
+          }
+        ],
+        "min_tips": [
+          {
+            "id": 7,
+            "output_name": "output"
+          }
+        ],
+        "outgroup": [
+          {
+            "id": 8,
+            "output_name": "output"
+          }
+        ],
+        "clone_cut_mode": [
+          {
+            "id": 20,
+            "output_name": "output"
+          }
+        ],
+        "clone_cut_threshold": [
+          {
+            "id": 21,
+            "output_name": "output"
+          }
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "workflow_outputs": [
+        {
+          "label": "clone_assignments",
+          "output_name": "assignments"
+        },
+        {
+          "label": "clone_trees",
+          "output_name": "clone_trees"
+        }
+      ],
+      "post_job_actions": {}
+    },
+    "25": {
+      "id": 25,
+      "name": "spice_ancestry",
+      "type": "tool",
+      "label": "ancestry",
+      "annotation": "Map rooted clone trees to ancestry, reusing the full states table and retaining clone identifiers.",
+      "tool_state": "{\"__page__\": 0}",
+      "tool_id": "spice_ancestry",
+      "tool_version": "0.2.0+galaxy0",
+      "position": {
+        "top": 250,
+        "left": 250
+      },
+      "input_connections": {
+        "tree": [
+          {
+            "id": 24,
+            "output_name": "clone_trees"
+          }
+        ],
+        "states": [
+          {
+            "id": 3,
+            "output_name": "output"
+          }
+        ],
+        "mcmc_chains": [
+          {
+            "id": 10,
+            "output_name": "output"
+          }
+        ],
+        "iterations": [
+          {
+            "id": 11,
+            "output_name": "output"
+          }
+        ],
+        "burnin": [
+          {
+            "id": 12,
+            "output_name": "output"
+          }
+        ],
+        "log_sample_period": [
+          {
+            "id": 13,
+            "output_name": "output"
+          }
+        ],
+        "stepping_stones": [
+          {
+            "id": 14,
+            "output_name": "output"
+          }
+        ],
+        "qc|rhat_threshold": [
+          {
+            "id": 16,
+            "output_name": "output"
+          }
+        ],
+        "qc|bulk_ess_threshold": [
+          {
+            "id": 17,
+            "output_name": "output"
+          }
+        ],
+        "qc|tail_ess_threshold": [
+          {
+            "id": 18,
+            "output_name": "output"
+          }
+        ],
+        "qc|min_ancestral_probability": [
+          {
+            "id": 19,
+            "output_name": "output"
+          }
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "workflow_outputs": [
+        {
+          "label": "ancestry",
+          "output_name": "ancestral_states"
+        },
+        {
+          "label": "ancestry_qc",
+          "output_name": "qc_status"
+        },
+        {
+          "label": "ancestry_runtime",
+          "output_name": "runtime"
+        }
+      ],
+      "post_job_actions": {}
+    },
+    "26": {
+      "id": 26,
+      "name": "spice_plasticity",
+      "type": "tool",
+      "label": "plasticity",
+      "annotation": "Map aligned clone trees and ancestry results, preserving clone identifiers and mandatory QC.",
+      "tool_state": "{\"__page__\": 0}",
+      "tool_id": "spice_plasticity",
+      "tool_version": "0.2.0+galaxy0",
+      "position": {
+        "top": 260,
+        "left": 260
+      },
+      "input_connections": {
+        "tree": [
+          {
+            "id": 24,
+            "output_name": "clone_trees"
+          }
+        ],
+        "states": [
+          {
+            "id": 3,
+            "output_name": "output"
+          }
+        ],
+        "ancestral_states": [
+          {
+            "id": 25,
+            "output_name": "ancestral_states"
+          }
+        ],
+        "state_order": [
+          {
+            "id": 4,
+            "output_name": "output"
+          }
+        ],
+        "perm_chains": [
+          {
+            "id": 10,
+            "output_name": "output"
+          }
+        ],
+        "perm_iterations": [
+          {
+            "id": 11,
+            "output_name": "output"
+          }
+        ],
+        "perm_burnin": [
+          {
+            "id": 12,
+            "output_name": "output"
+          }
+        ],
+        "perm_sample_period": [
+          {
+            "id": 13,
+            "output_name": "output"
+          }
+        ],
+        "perm_replicates": [
+          {
+            "id": 15,
+            "output_name": "output"
+          }
+        ],
+        "qc|rhat_threshold": [
+          {
+            "id": 16,
+            "output_name": "output"
+          }
+        ],
+        "qc|bulk_ess_threshold": [
+          {
+            "id": 17,
+            "output_name": "output"
+          }
+        ],
+        "qc|tail_ess_threshold": [
+          {
+            "id": 18,
+            "output_name": "output"
+          }
+        ],
+        "qc|min_ancestral_probability": [
+          {
+            "id": 19,
+            "output_name": "output"
+          }
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "workflow_outputs": [
+        {
+          "label": "plasticity_tests",
+          "output_name": "plasticity_test"
+        },
+        {
+          "label": "plasticity_runtime",
+          "output_name": "runtime"
+        }
+      ],
+      "post_job_actions": {}
+    },
+    "27": {
+      "id": 27,
+      "name": "spice_summarize",
+      "type": "tool",
+      "label": "summarize",
+      "annotation": "Aggregate the per-clone plasticity-test collection with the existing SPICE BH summary command.",
+      "tool_state": "{\"__page__\": 0}",
+      "tool_id": "spice_summarize",
+      "tool_version": "0.2.0+galaxy0",
+      "position": {
+        "top": 270,
+        "left": 270
+      },
+      "input_connections": {
+        "plasticity_tests": [
+          {
+            "id": 26,
+            "output_name": "plasticity_test"
+          }
+        ]
+      },
+      "inputs": [],
+      "outputs": [],
+      "workflow_outputs": [
+        {
+          "label": "summary",
+          "output_name": "summary"
+        }
+      ],
+      "post_job_actions": {}
+    }
+  }
+}

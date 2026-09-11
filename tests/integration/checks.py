@@ -300,10 +300,12 @@ def chains(out, prefix):
     return attempt
 
 
-def ancestry(out, seed):
+def ancestry(out, seed, tree=None):
     out.mkdir()
     fixture = FIXTURES / "ancestry"
-    run([SPICE, "ancestry", fixture / "tree.nwk", fixture / "states.tsv", out, "synthetic",
+    tree = tree or fixture / "tree.nwk"
+    original_tree = tree.read_bytes()
+    run([SPICE, "ancestry", tree, fixture / "states.tsv", out, "synthetic",
          "--mcmc_seed", seed, *ANCESTRY], out / "command.log")
     attempt = chains(out, "synthetic")
     mapping = table(out / "synthetic.state_mapping.tsv")
@@ -317,7 +319,9 @@ def ancestry(out, seed):
             "Trait reconciliation changed states")
     rows = table(out / "synthetic.ancestral_states.tsv")
     require(len(rows) == 11 and {r["node_id"] for r in rows} == {f"T{i}" for i in range(1,12)}, "Internal nodes")
+    require(tree.read_bytes() == original_tree, "Ancestry modified the supplied tree")
     for row in rows:
+        require(row["tree_md5"] == hashlib.md5(original_tree).hexdigest(), "Original tree fingerprint lost")
         require(row["node_id"] == "T" + row["node_number"] and
                 row["qc_policy"] == "constant-probabilities-v1", "Ancestry identifiers/policy")
         probs = [number(row["posterior_state_" + s], 0, 1) for s in ("0", "1")]
@@ -330,10 +334,27 @@ def ancestry(out, seed):
         number(row["posterior_q025"], 0, p); number(row["posterior_q975"], p, 1)
         require(flag(row["confident"]) == (p >= .5) and flag(row["run_qc_pass"]) and
                 flag(row["node_qc_pass"]) and flag(row["usable"]) == flag(row["confident"]), "Confidence/QC gating")
-    run(["Rscript", "--vanilla", HERE / "verify_trees.R", out, fixture / "tree.nwk",
+    run(["Rscript", "--vanilla", HERE / "verify_trees.R", out, tree,
          attempt / "synthetic.bayestraits_tree.nex"], out / "nexus-validation.log")
     provenance(out / "synthetic.runtime.json", "ancestry")
     return out / "synthetic.ancestral_states.tsv"
+
+
+
+def labeled_tree_ancestry(out, reference):
+    """Real V4 regression: support metadata must not become taxa in its parser."""
+    out.mkdir()
+    nwk = out / "dual supports.nwk"
+    nwk.write_text((FIXTURES / "ancestry/tree.nwk").read_text().replace(")", ")95.6/99"))
+    nex = out / "dual supports.nex"
+    run(["Rscript", "--vanilla", "-e",
+         "a<-commandArgs(TRUE); ape::write.nexus(ape::read.tree(a[1]),file=a[2],digits=17)",
+         nwk, nex], out / "fixture-nexus.log")
+    expected = [{k:v for k,v in row.items() if k != "tree_md5"} for row in table(reference)]
+    for fmt, tree in [("newick", nwk), ("nexus", nex)]:
+        result = ancestry(out / fmt, 12345, tree)
+        actual = [{k:v for k,v in row.items() if k != "tree_md5"} for row in table(result)]
+        require(actual == expected, "Support-label serialization changed seeded ancestry results")
 
 
 def plasticity(out, anc, seed):
@@ -436,10 +457,12 @@ def main():
         anc = ancestry(out / "ancestry with spaces", 12345 + (i-1)*1000)
         plasticity(out / "plasticity with spaces", anc, 12345 + (i-1)*1000)
         if i == 1:
+            labeled_tree_ancestry(out / "labeled tree ancestry", anc)
             negative(out / "negative", anc)
     report = {"status": "pass", "skipped": 0, "repeats": EXPECTED["repeats"],
               "spice": str(SPICE), "import": str(PACKAGE_DIR),
               "clone_equivalence": "pass", "arbitrary_tree_path": "pass",
+              "labeled_tree_ancestry": "pass",
               "IQ-TREE": EXPECTED["IQ-TREE"], "BayesTraits": EXPECTED["BayesTraits"], "commands": COMMANDS}
     (HERE / "results.json").write_text(json.dumps(report,indent=2))
     print("PASS: IQ-TREE / standalone clone equivalence / ancestry / 3 permutations / summary / failure paths",flush=True)
