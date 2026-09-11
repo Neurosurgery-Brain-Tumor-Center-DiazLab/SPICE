@@ -137,3 +137,17 @@ order_file <- tempfile()
 writeLines(c("state\torder","A\tInf","B\t1"),order_file)
 expect_error(spice_read_state_order(order_file),"non-finite")
 cat("PASS: input validation, unique posterior columns and QC policy compatibility\n")
+
+# Real file conversion regression: Newick is accepted by SPICE, NEXUS by V4.
+converted_file <- tempfile(pattern="SPICE tree with spaces ",fileext=".nex")
+writeLines("((a:0.1234567890123456,b:0.2):0.3,(c:0.4,d:0.5):0.6);",tree_file)
+input_tree <- spice_read_tree(tree_file)
+stopifnot(identical(spice_bt_tree_input(tree_file,input_tree,converted_file),converted_file))
+converted_tree <- ape::read.nexus(converted_file)
+stopifnot(ape::is.rooted(converted_tree),
+          identical(input_tree$tip.label,converted_tree$tip.label),
+          identical(input_tree$edge,converted_tree$edge),
+          max(abs(input_tree$edge.length-converted_tree$edge.length)) < 1e-15)
+stopifnot(identical(spice_bt_tree_input(converted_file,converted_tree,"unused"),converted_file))
+unlink(converted_file)
+cat("PASS: Newick/NEXUS subprocess input preserves rooting, tips, topology and branch lengths\n")

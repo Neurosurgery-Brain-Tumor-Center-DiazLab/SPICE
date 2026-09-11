@@ -93,7 +93,10 @@ commands, exit codes, all packaged resources and SHA-256 hashes, exact retained
 cell/site order/counts/FASTA/sidecars, filter and summary equivalence, summary
 overwrite protection, and provenance with missing or unrelated Git state.
 The real filter runs R; source/installed scientific tables must match exactly.
-No real IQ-TREE or BayesTraits inference is run. Phase 3 integration fixtures
-and scientific release decisions remain outside this phase.
+This package checker does not run real IQ-TREE or BayesTraits inference.
+The separate [Phase 3 integration runner](integration-testing.md) builds and
+tests a fresh wheel against both real tools. Its synthetic development files
+ship only in the sdist; no external executables enter either distribution.
+Scientific release decisions remain outside the engineering checks.
 
 See [engineering-handoff.md](engineering-handoff.md) for observed local results.

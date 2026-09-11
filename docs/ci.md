@@ -98,3 +98,23 @@ and provenance outside Git. Python runtime dependencies in the wheel install
 resolve within the declared compatible bounds; the source/R environment still
 uses the unchanged Phase 1 lock. Build frontend tooling is pinned separately.
 See [packaging.md](packaging.md) for commands and resource ownership.
+
+## Phase 3 manual real-tool integration
+
+**Actions -> SPICE Phase 3 Integration -> Run workflow** executes the full
+IQ-TREE 2.4.0 / BayesTraits V4.1.3 suite through an external installed wheel.
+It is manual only, is not required for PR merge, and does not change the
+**Phase 1 required checks** job or any ruleset. Its separate 210-package
+SHA-256 lock includes the plotting and real inference dependencies.
+
+Local entry: `python3 scripts/check_integration.py` in the dedicated Linux
+environment. Budget about 5–15 minutes including setup; success requires all
+real-tool assertions and all three permutation smoke replicates, with zero
+skips. Inspect the job log and the text-only `spice-integration-text-evidence`
+artifact for commands, QC, provenance and failure details. No executable,
+archive or wheel is uploaded. GitHub's initial default-branch workflow
+registration requirement is documented with the dispatch instructions.
+
+See [integration-testing.md](integration-testing.md) for exact installation,
+official download checksums, test-only MCMC settings, fixture scope and logs.
+Synthetic integration fixtures are not biological validation or a benchmark.

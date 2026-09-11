@@ -1,0 +1,52 @@
+name: SPICE Phase 3 Integration
+
+# Deliberately independent of PR/push CI; never add this job as a required check.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  integration:
+    name: Real IQ-TREE and BayesTraits integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 75
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3
+        with:
+          micromamba-version: 2.3.2-0
+          environment-name: spice-integration
+          environment-file: ci/integration-linux-64.lock
+          create-args: --strict-channel-priority
+          cache-environment: false
+          cache-downloads: false
+          init-shell: none
+          generate-run-shell: true
+      - name: Record resolved integration environment
+        shell: micromamba-shell {0}
+        run: micromamba list --explicit --sha256
+      - name: Build wheel and run all real-tool assertions
+        shell: micromamba-shell {0}
+        run: python3 scripts/check_integration.py --work-dir "$RUNNER_TEMP/spice-integration"
+      # Strict file allowlist: no executable, archive, wheel, environment or cache.
+      - name: Retain text-only integration evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spice-integration-text-evidence
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/spice-integration/*.log
+            ${{ runner.temp }}/spice-integration/result.json
+            ${{ runner.temp }}/spice-integration/external tests with spaces/expected.json
+            ${{ runner.temp }}/spice-integration/external tests with spaces/commands.json
+            ${{ runner.temp }}/spice-integration/external tests with spaces/run_*/**/*.log
+            ${{ runner.temp }}/spice-integration/external tests with spaces/run_*/**/*.stdout.txt
+            ${{ runner.temp }}/spice-integration/external tests with spaces/run_*/**/*.stderr.txt
+            ${{ runner.temp }}/spice-integration/external tests with spaces/run_*/**/*.tsv
+            ${{ runner.temp }}/spice-integration/external tests with spaces/run_*/**/*.runtime.json

@@ -126,6 +126,24 @@ spice summarize --help
 Rscript -e 'p <- c("dplyr","progress","ape","phangorn","phytools","ggplot2","ggtree","ggsci","coda","janitor","posterior"); stopifnot(all(vapply(p, requireNamespace, logical(1), quietly=TRUE)))'
 ```
 
+### Real external-tool integration checks
+
+The separate [Phase 3 integration suite](docs/integration-testing.md) runs real
+IQ-TREE 2.4.0, BranchSupportCut.R and BayesTraits V4.1.3 through a fresh,
+non-editable wheel installation outside the checkout. All fixtures are synthetic;
+this validates software integration, not biological accuracy.
+
+After creating the dedicated locked Linux environment:
+
+```bash
+micromamba run -p "$PWD/.local-ci/integration-env" python3 scripts/check_integration.py
+```
+
+Maintainers can use **Actions -> SPICE Phase 3 Integration -> Run workflow**.
+This workflow is manual only and is not required for PR merge. The normal
+**Phase 1 required checks** gate remains unchanged. See the linked guide for
+exact dependencies, official BayesTraits checksums, test settings and failure logs.
+
 ### Environment and version
 
 ```bash
@@ -505,6 +523,11 @@ Required inputs are a rooted tree and its cell-state table. Run once per clone i
 Pass `.ancestral_states.tsv` to plasticity. Join `.state_mapping.tsv` to map the unique posterior state-code columns to original labels. The input requires the current `qc_policy`; before permutations, modern QC thresholds and the hyperprior must match the observed ancestry. A different posterior cutoff is supported and recalculated. Results created before policy metadata was introduced must be regenerated. `posterior_probability` is the selected state’s posterior mean, with 2.5% and 97.5% quantiles of its sampled probabilities. The `confident` flag uses `min_ancestral_probability`; `usable` additionally requires model and node QC to pass. Model QC covers likelihood and rate parameters. Node QC covers all sampled state probabilities for that node. State probabilities that have exactly the same finite value in [0,1] across all retained draws of every chain are marked `constant_consistent` and are eligible for use when model QC and the remaining node probabilities pass. Their R-hat/ESS diagnostics remain unavailable; this exception does not establish convergence or biological certainty. Different chain constants, partially constant chains, and constant model parameters do not qualify. Other unavailable diagnostics remain failures. `constant_probability_terms` and `node_qc_status` identify affected nodes in the ancestry output.
 
 A QC failure triggers a fresh set of all chains, with longer iterations and burn-in, up to the retry budget. With defaults, attempts use 1, 2, and 4 million iterations per chain. Only the final attempt supplies downstream posteriors; samples from different attempts are not pooled. Model QC failure blocks downstream analysis. When model QC passes but some nodes still fail after retries, those nodes remain uncertain. Process or malformed-log errors stop immediately and retain their logs.
+
+Newick inputs are converted to full-precision NEXUS only for the BayesTraits
+subprocess; original tree fingerprints and node identities are preserved.
+Each chain runs in its own directory with a local log basename, so paths with
+spaces work with the BayesTraits command language.
 
 Use a fresh output directory or prefix for every run. All attempts and command files are retained. Fixed `--mcmc_seed` values make chain seed assignment independent of `--threads`; use a different seed to assess Monte Carlo stability. The seed for attempt a, chain c is the base plus `(a−1) × chains + (c−1)`, wrapped to the supported positive integer range.
 

@@ -43,6 +43,14 @@ spice_read_tree <- function(tree_file) {
   tree
 }
 
+# BayesTraits V4 requires NEXUS; SPICE also accepts Newick.
+# Keep the original tree for node IDs, fingerprints and scientific calculations.
+spice_bt_tree_input <- function(tree_file, tree, converted_file) {
+  if (tolower(tools::file_ext(tree_file)) %in% c("nex", "nexus")) return(tree_file)
+  ape::write.nexus(tree, file=converted_file, digits=17)
+  converted_file
+}
+
 spice_read_states <- function(state_file) {
   first <- readLines(state_file, n=1, warn=FALSE)
   fields <- strsplit(first, "\t", fixed=TRUE)[[1]]
@@ -183,6 +191,10 @@ spice_run_bt_chain <- function(
   chain_name <- sprintf("MCMC%d", chain_id)
   chain_dir <- file.path(output_dir, chain_name)
   dir.create(chain_dir, recursive=TRUE, showWarnings=FALSE)
+  chain_dir <- normalizePath(chain_dir, mustWork=TRUE)
+  tree_file <- normalizePath(tree_file, mustWork=TRUE)
+  trait_file <- normalizePath(trait_file, mustWork=TRUE)
+  bayestraits_bin <- normalizePath(bayestraits_bin, mustWork=TRUE)
   cmd_file <- file.path(chain_dir, paste0(chain_name, "_cmd.txt"))
   addnodes_file <- file.path(chain_dir, paste0(chain_name, "_AddNodes.txt"))
   logfile_prefix <- file.path(chain_dir, chain_name)
@@ -191,7 +203,7 @@ spice_run_bt_chain <- function(
     tree=tree,
     command_file=cmd_file,
     addnodes_file=addnodes_file,
-    logfile_prefix=logfile_prefix,
+    logfile_prefix=chain_name,
     iterations=iterations,
     burnin=burnin,
     sample_period=sample_period,
@@ -200,6 +212,10 @@ spice_run_bt_chain <- function(
     hyperprior=hyperprior, mcmc_seed=mcmc_seed
   )
 
+  # The BayesTraits command language splits LogFile on whitespace. A local
+  # basename avoids quoting ambiguities while preserving the exported log path.
+  previous_dir <- setwd(chain_dir)
+  on.exit(setwd(previous_dir), add=TRUE)
   status <- system2(
     bayestraits_bin,
     args=c(shQuote(tree_file), shQuote(trait_file)),
@@ -409,6 +425,8 @@ spice_run_ancestry_once <- function(
 ) {
   dir.create(output_dir, recursive=TRUE, showWarnings=FALSE)
   tree <- spice_read_tree(tree_file)
+  bt_tree_file <- spice_bt_tree_input(tree_file, tree,
+    file.path(output_dir, paste0(prefix, ".bayestraits_tree.nex")))
   states <- if (!is.null(states_df)) states_df else spice_read_states(state_file)
   states <- spice_validate_tree_states(tree, states)
   encoded <- spice_encode_states(states)
@@ -424,7 +442,7 @@ spice_run_ancestry_once <- function(
   ncores <- max(1L, min(as.integer(threads), as.integer(chains)))
   ids <- seq_len(chains)
   runner <- function(i) spice_run_bt_chain(
-    chain_id=i, tree_file=tree_file, trait_file=trait_file, tree=tree,
+    chain_id=i, tree_file=bt_tree_file, trait_file=trait_file, tree=tree,
     output_dir=output_dir, prefix=prefix, bayestraits_bin=bayestraits_bin,
     iterations=iterations, burnin=burnin, sample_period=sample_period,
     stepping_stones=stepping_stones, stone_iterations=stone_iterations,

@@ -1,145 +1,199 @@
-# SPICE engineering handoff
+# SPICE engineering handoff — Phase 3
 
-## Phase 2 scope and starting state
+## Starting state and scope
 
-Phase 2 implements an installable local distribution and preserves scientific
-behavior. Stop after this phase; Phase 3 inference/integration fixtures have not
-been started. The earlier Phase 1 handoff remains in Git history at `fddbe03`.
-
-Working checkout: `/home/aaron/SPICE`, branch `codex/phase2-package`, remote
+Checkout: `/home/aaron/SPICE`, remote
 `https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE.git`.
-Before editing, pwd, status, branch and remotes were checked and origin fetched.
-HEAD and current origin/main both resolved to
-`fddbe03344359bec3385f7ffcde23ad20e420824`; the working tree was clean.
-No reset, stash, discarded work or main-branch commit was used.
-No applicable AGENTS.md was found.
+The clean feature branch `codex/phase3-integration-tests`, HEAD and fetched
+origin/main all started at `10a73f62dbd9817967f7b971af21059e945a6b29`.
+No intervening main changes or applicable AGENTS.md were found.
+No reset, stash, discarded work, rebase or main-branch commit was used.
 
-## Architecture and changed files
+Phase 3 adds real-tool integration of the installed wheel. Phase 4 has not
+started; no standalone clone command, scientific redesign, PyPI/Bioconda/
+container publication or Galaxy work is included. The prior Phase 2 handoff
+is retained in Git at the starting commit.
 
-- `pyproject.toml`: setuptools PEP 517/518/621 build, distribution
-  `spice-lineage`, Python >=3.10, runtime dependency `pandas>=1.5,<3`,
-  GPL-3.0-only and original citation/author metadata, `spice` console entry.
-- `SPICE.py`: thin wrapper importing the same `spice_lineage.cli.main` used by
-  the installed console entry; legacy source-checkout commands still work.
-- Move CLI and six Python helpers into `spice_lineage/`. Add `__init__.py`,
-  `paths.py` and packaged `VERSION`. Package version, checkout VERSION,
-  citation version, distribution metadata and CLI output are checked for agreement.
-- Move seven active R files to `spice_lineage/resources/r/`, with no byte changes:
-  matrix_bridge.R, mutation_filter.R, BranchSupportCut.R, ancestry_core.R,
-  plasticity_core.R, spice_ancestry_utils.R, spice_plasticity_utils.R.
-- `runtime_info.py`: hash installed package files, report their source root,
-  verify the SPICE checkout before probing Git, and ignore unrelated Git
-  environment overrides. Missing Git is explicitly unavailable.
-- `MANIFEST.in`: constrained source distribution with tests, synthetic example,
-  docs and required development helpers. The wheel contains only the package,
-  active R resources, version, license/citation and distribution metadata.
-  Other legacy analysis scripts remain unchanged in the Git checkout.
-- `scripts/check_package.py`, `tests/installed_checks.py`,
-  `tests/test_package.py`, and `tests/standard_example.py`: build/artifact,
-  installation, metadata/resource, provenance and scientific equivalence checks.
-  Existing test imports/resource paths were migrated; behavioral assertions
-  were retained. The Phase 1 example assertions are shared with the wheel test.
-- `.github/workflows/ci.yml`: keep **Phase 1 required checks**, then add build
-  tooling and the package checker. `ci/requirements-build.txt` pins build 1.4.0.
-  The existing Phase 1 lock and check script are unchanged.
-- README, CHANGELOG, docs/ci.md, docs/packaging.md and this handoff describe local
-  installation, external dependencies, observed tests and scope. `.gitignore`
-  excludes local build/venv metadata.
+## Implementation and reviewed boundary
 
-## Scientific code review
+- `scripts/check_integration.py`: Linux-only, zero-skip runner; exact tool
+  version checks, official BayesTraits download and pre-execution SHA-256
+  verification, fresh wheel/venv, constrained runtime dependencies, neutral
+  external cwd, logs/timings, and cleanup of downloaded executables.
+- `tests/integration/`: explicit synthetic bundles, installed CLI assertions,
+  independent R tree checks, and failure checks. No real-tool mocks.
+- `ci/integration-environment.yml`, `ci/integration-linux-64.lock`: separate
+  210-package integration environment. The explicit SHA-256 lock was recreated
+  in a second isolated prefix before successful real-tool validation.
+- `.github/workflows/integration.yml`: **SPICE Phase 3 Integration**,
+  workflow_dispatch only, Ubuntu 24.04, read-only contents, pinned Action SHAs,
+  75-minute timeout, no secrets, and an explicit text-only artifact allowlist.
+- `MANIFEST.in`, `scripts/check_package.py`: include and verify integration
+  development material in the sdist. Wheel contents stay unchanged.
+- README, CHANGELOG, docs/ci.md, docs/packaging.md and
+  [integration-testing.md](integration-testing.md): execution, checksums,
+  fixture settings and scientific limits.
 
-All seven moved R files and four moved Python scientific helpers
-(standard_input.py, convert_matrix_to_fasta.py, IQTREE2.py, summarize_clones.py)
-were compared against the starting commit and are byte-for-byte identical.
-The Monopogen importer only changes the R bridge resource lookup/import.
-The CLI changes package imports/resource resolution, the usage program name,
-the missing-resource message, and stops forcing R subprocesses into the source
-directory; its input/output paths are already absolute. Five inherited trailing
-whitespace lines in the moved CLI were trimmed to satisfy diff-check; its AST
-was verified unchanged by that whitespace-only edit. Provenance changes are
-limited to version/source/Git metadata handling.
+Only `spice_lineage/resources/r/spice_ancestry_utils.R` changes production code:
 
-No filtering order, count interpretation, FASTA mapping, site multiplicity,
-IQ-TREE model/support defaults, clone algorithm/rooting, MCMC settings/QC,
-state-order semantics, transitions, permutations, empirical P values, BH
-correction, scientific tables or overwrite policies were changed.
-No new scientific defect or maintainer decision was identified.
+1. Real V4.1.3 rejected the original Newick subprocess input with
+   `Tree file does not have a valid nexus tag`. A small boundary helper
+   writes an attempt-local NEXUS with 17-digit branch lengths; existing NEXUS
+   passes through. Original parsed-tree node IDs and input fingerprints remain
+   authoritative. The real Newick wheel test failed before this fix; an
+   additional fast file round-trip regression verifies root, topology, tip
+   order and branch lengths.
+2. Real V4.1.3 rejected an absolute `LogFile` path containing spaces.
+   Each chain now runs from its own directory and uses its MCMC basename;
+   expected absolute log paths remain unchanged. All inputs/executable paths
+   are resolved before changing cwd, which is restored on exit. The real
+   space-containing path assertion failed before the fix and now verifies
+   complete chain logs and explicit local LogFile commands.
 
-## Observed local validation
+No variant filtering/count/FASTA semantics, site order/multiplicity, IQ-TREE
+defaults/support order, clone algorithm/selection/rooting, BayesTraits model/
+priors/MCMC defaults/seeds/retry policy, QC policy/threshold defaults,
+posterior policy, state order, transition classification, permutation method,
+P-value/BH calculation, scientific tables or overwrite safeguards changed.
+Version remains **0.2.0 (unreleased)**; the engineering fixes are documented
+without creating a new public release.
 
-Executed on Ubuntu 20.04 LTS under WSL1, Linux x86_64, glibc 2.31.
-Windows PowerShell invoked WSL explicitly because the native Windows workspace
-process helper could not launch reliably. No system environment was modified.
+An external runtime issue was also diagnosed: the official binary's static
+OpenBLAS spawned threads that failed WSL1 cleanup (`munmap` EINVAL), including
+after completed inference. Test-only OPENBLAS_NUM_THREADS=1 and OMP_NUM_THREADS=1
+resolve it and bound resources. No exit code is ignored; version probes and
+all real inference must exit zero.
 
-The existing isolated `.local-ci/locked-env` supplies Python 3.11.16,
-pandas 2.2.3, NumPy 2.4.6 and R 4.3.3; R packages include ape 5.8-1,
-coda 0.19-4.1, janitor 2.2.1, posterior 1.6.0, dplyr 1.1.4 and progress 1.2.3.
-Build 1.4.0 was added as development tooling. The fresh wheel venv independently
-resolved pandas 2.3.3 and NumPy 2.4.6 within runtime metadata bounds.
+## Synthetic fixtures and test-only settings
 
-Commands from the checkout (MM abbreviates the existing bootstrap executable):
+Phylogeny: **15 cells x 700 variants**, filtered to exactly **13 x 696**.
+Ref plus A1-A4, B1-B4, C1-C4 remain; LowSupport and Excluded are removed.
+Four all-REF sites are removed. 240 constant, 60 ingroup, and 132 sites per
+four-cell group provide transparent strong signal, sister-pair and private
+variation. Ref is the explicit outgroup. The trusted partition must be the
+three four-cell sets, allowing arbitrary clone labels; Ref is unassigned.
+
+One thread, JC, 1000 UFBoot/1000 SH-aLRT replicates, manual incoming-edge
+cutoff 0.10, existing 90/75 support cutoffs and minimum clone size two.
+Complete matrix/site/cell/FASTA assertions precede output metadata, partition,
+tree readability and provenance checks. No exact stochastic tree is required.
+
+Ancestry: **12 tips, 11 internal nodes, 22 positive-length edges**, two states
+with six tips each. Reversed annotation rows test reconciliation; state order
+(Progenitor=1, Differentiated=2) differs from alphabetical numeric encoding.
+The input is independent of IQ-TREE output.
+
+Two chains, 50,000 iterations, burn-in 10,000, sample period 100 (400 retained
+draws/chain), no stepping stones; R-hat <1.2, bulk/tail ESS >=20, recorded
+legacy ESS/PSRF cutoffs 20/1.2, posterior cutoff 0.5, one retry allowed.
+Existing exponential hyperprior and seed derivation remain unchanged.
+Plasticity uses matching settings and exactly three permutations with the
+greater alternative and shuffle seed 12345. Three permutations test execution;
+they are not a calibrated significance/power benchmark.
+
+## Observed local results
+
+Host: Ubuntu 20.04 under WSL1, Linux x86_64, glibc 2.31.
+Windows sandbox process setup failed; authorized WSL commands ran directly
+without modifying the system environment.
+
+Both pre-edit baselines passed:
+- Phase 1: 21 discovered/run, zero skips/failures/errors, all R QC and CLI checks.
+- Phase 2: wheel/sdist inspection plus five non-editable-install checks.
+
+After the integration fixes, both passed again with the added file conversion
+regression. `git diff --check` and actionlint for both workflows passed.
+The normal ci.yml, Phase 1 lock, CLI defaults and VERSION files are unchanged.
+
+The full real suite first passed at `/tmp/spice-phase3-integration-05` in
+**133.53 seconds**, including fresh wheel installation and three permutations.
+The final repeated validation at `/tmp/spice-phase3-final-integration` passed
+**three complete runs, zero skips, in 170.72 seconds total**. Seed bases were
+12345, 13345 and 14345; each used independent IQ-TREE inference and three
+BayesTraits-backed permutation replicates. All clone partitions and ancestry/
+permutation QC assertions passed. Optional summary and deterministic failure
+checks passed. These times exclude environment installation.
+
+The final wheel:
+`/tmp/spice-phase3-final-integration/dist/spice_lineage-0.2.0-py3-none-any.whl`
+
+SHA-256:
+`0d0689329260b7e74df02d1381070ddc4903a8736a482ec1471056d4f4b6d99d`
+
+Installed executable:
+`/tmp/spice-phase3-final-integration/venv/bin/spice`
+
+Verified import:
+`/tmp/spice-phase3-final-integration/venv/lib/python3.11/site-packages/spice_lineage`
+
+Pip's non-editable wheel URL/hash and runtime source hashes were checked.
+Runtime records explicitly report Git unavailable and include real executable
+paths/hashes, IQ-TREE version output and retained BayesTraits banners.
+
+## Exact external/runtime identity
+
+- IQ-TREE **2.4.0**, from the SHA-256-pinned Bioconda package.
+  Path: `/home/aaron/SPICE/.local-ci/integration-locked-env/bin/iqtree2`.
+  Executable SHA-256:
+  `77f5aaabea6427da0d9cc1c32e390f3b5bfb4916ce673be1c9bd95c141f22b82`.
+- BayesTraits **V4.1.3 (Sep 27 2024)**, official University of Reading HTTPS
+  [Linux archive](https://www.evolution.reading.ac.uk/BayesTraitsV4.1.3/Files/BayesTraitsV4.1.3-Linux.tar.gz).
+  Archive SHA-256:
+  `cf0f5d9afa6ab74ae5aa6f386d1b3a4bc20d25643878aecddab459259b030674`.
+  Binary SHA-256:
+  `711024887c5484d5f6e768313b1aafea01c83705234e9a1172d5ed8e8f33bb4d`.
+  Final run path `/tmp/spice-bayestraits-2jd7m3yv/BayesTraitsV4` was deleted after
+  execution. Version probe and every inference returned zero.
+- Python **3.11.16**, R **4.3.3**; locked integration pandas **2.2.3**,
+  NumPy **2.4.6**.
+- R packages: ape **5.8-1**, coda **0.19-4.1**, janitor **2.2.1**,
+  posterior **1.6.0**, dplyr **1.1.4**, progress **1.2.3**,
+  phangorn **2.12.1**, phytools **2.5.2**, ggplot2 **3.5.2**,
+  ggtree **3.10.0**, ggsci **3.2.0**, base parallel **4.3.3**.
+
+## Commands and retained evidence
+
+From `/home/aaron/SPICE`:
 
 ```bash
 MM=.local-ci/bootstrap/bin/micromamba
 $MM run -p "$PWD/.local-ci/locked-env" python3 scripts/check_ci.py
 $MM run -p "$PWD/.local-ci/locked-env" python -m pip install -r ci/requirements-build.txt
-$MM run -p "$PWD/.local-ci/locked-env" python3 scripts/check_package.py --work-dir /tmp/spice-phase2-package-check
-# Final artifact/documentation verification uses a second new external directory:
-$MM run -p "$PWD/.local-ci/locked-env" python3 scripts/check_package.py --work-dir /tmp/spice-phase2-final-r1
-.local-ci/bootstrap/actionlint .github/workflows/ci.yml
+$MM run -p "$PWD/.local-ci/locked-env" python3 scripts/check_package.py --work-dir /tmp/spice-phase3-final-package
+$MM create -y -p "$PWD/.local-ci/integration-env" -f ci/integration-environment.yml --strict-channel-priority
+$MM create -y -p "$PWD/.local-ci/integration-locked-env" -f ci/integration-linux-64.lock
+$MM run -p "$PWD/.local-ci/integration-locked-env" python scripts/check_integration.py --work-dir /tmp/spice-phase3-final-integration --repeat 3
+.local-ci/bootstrap/actionlint .github/workflows/ci.yml .github/workflows/integration.yml
 git diff --check
 ```
 
-Before edits, Phase 1 passed: 17 discovered/run, 0 skipped, failures or errors;
-all real R QC assertions and top-level/six-subcommand help/version checks passed.
-After refactoring, source checks passed: 21 discovered/run, 0 skipped, failures
-or errors, plus the same R QC and CLI checks. Five installed-wheel tests passed.
-The exact generated build command is `python -m build --outdir EXTERNAL/dist ROOT`;
-its default path builds an sdist and then a wheel from that sdist, using isolated
-backend environments. The checker installs the wheel with ordinary pip in a
-fresh non-editable venv, unsets PYTHONPATH, runs `pip check`, and executes copied
-tests from a neutral directory. Artifact checks verify complete file allowlists
-and source bytes, excluding Git, environments, caches, logs and unrelated data.
+Work directories must be new; choose another suffix when reproducing.
+The full exact subprocess argument arrays, exit codes and durations are in
+`/tmp/spice-phase3-final-integration/result.json` and
+`external tests with spaces/commands.json`. Each run retains tool/command logs,
+QC attempt tables, ancestry, plasticity and runtime provenance. The original
+baseline and subsequent validation logs use `/tmp/spice-phase3-*` names.
+No environment, binary, cache or ad hoc inference output is tracked.
 
-Artifacts: `spice_lineage-0.2.0-py3-none-any.whl` and
-`spice_lineage-0.2.0.tar.gz`. The wheel has 24 files, including all seven active
-R resources; the sdist includes the package and bounded development material.
-Local artifacts and review evidence are retained under
-`/tmp/spice-phase2-final-r1/` (initial validation: `/tmp/spice-phase2-package-check/`).
-Builds/logs/environments are not committed.
+## Delivery and remaining hosted validation
 
-The initial non-editable import was verified at
-`/tmp/spice-phase2-package-check/venv/lib/python3.11/site-packages/spice_lineage/__init__.py`;
-the final install uses the corresponding path under `/tmp/spice-phase2-final-r1/`.
-No top-level `scripts` or `SPICE` module is installed. Console entry metadata
-loads the exact same main function as the package CLI.
+The intended PR targets main and must not be merged by this task.
+The PR description records final commit IDs, PR URL and actually observed
+hosted statuses; local success does not establish hosted success.
 
-The real standard filter uses only copied synthetic examples, the wheel and the
-external R runtime/packages, with cutoffs 2/1 and one thread. It retains ordered
-cells Ref, cell-2, cell_3 and ordered sites chr1:10:A:G, chr1:20:A:G, chr2:30:C:T.
-The complete filtered count matrix, FASTA sequences GGC/RRT/AAT, required sidecars,
-PDF header and runtime success are asserted. Scientific filter files and summary
-tables match the legacy wrapper; summary overwrite protection is retained.
+The separate manual workflow is not required for merge. Read-only inspection
+of the active Protect main ruleset confirmed that its only required context
+remains **Phase 1 required checks**. No ruleset was changed.
 
-Installed runtime JSON records version 0.2.0, SHA-256 for all packaged Python/R
-sources and VERSION, successful R provenance and explicit Git unavailability.
-Tests also run inside an unrelated Git directory with ambient Git overrides.
-Source-checkout association is tested separately.
+A first workflow_dispatch needs the workflow registered on the default branch.
+At implementation time only SPICE CI was registered; this new manual workflow
+was absent from main. The agent must attempt branch dispatch and record the
+actual response in the PR. If GitHub refuses it, maintainer registration is
+required before hosted validation can finish; no push/PR trigger should be
+added as a workaround. The normal PR gate must still be observed separately.
 
-## Delivery and remaining scope
-
-The feature branch is intended for a PR against main, without merging.
-`docs/phase2-pr.md` is the ready-to-use PR description. Inspect focused commits
-with `git log fddbe03..HEAD` and the complete change with `git diff fddbe03..HEAD`.
-Hosted CI status must be read from the PR; local checks alone do not establish
-hosted success. The exact required status-check name remains
-**Phase 1 required checks**; no new ruleset check is needed.
-
-R and R packages, IQ-TREE and BayesTraits remain external. No real IQ-TREE or
-BayesTraits inference, plotting/clone integration, biological validation,
-benchmarks, standalone clone command, registry/container publication or Galaxy
-work was performed. No PyPI/Bioconda publication or name reservation is claimed.
-Scientist-led gates remain in maintainer-decisions.md.
-
-Recommended next step: review the Phase 2 PR and its hosted required check.
-Phase 3 requires a separate instruction.
+Recommended next step: review the feature PR and its required CI, resolve any
+initial manual-workflow registration requirement, then run **Actions ->
+SPICE Phase 3 Integration -> Run workflow** against the reviewed branch.
+No scientific-method defect was established. Scientist-led biological validation
+remains in maintainer-decisions.md. **Phase 4 has not started.**

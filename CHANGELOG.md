@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+- Add real IQ-TREE 2.4.0 / BayesTraits V4.1.3 integration through an external,
+  non-editable wheel install, committed synthetic fixtures, strict output/QC/
+  provenance assertions, and a dedicated SHA-256-pinned Linux dependency lock.
+- Add **SPICE Phase 3 Integration**, triggered only by workflow_dispatch and
+  not required for PR merge. The runner verifies the official BayesTraits
+  archive/binary hashes, deletes downloaded executables after the run, and
+  retains only text evidence in the workflow artifact.
+- Fix two reproduced BayesTraits subprocess integration defects: convert accepted
+  Newick input to full-precision NEXUS for V4; use a chain-local LogFile basename
+  to support output directories with spaces. Original tree fingerprints,
+  node identities, log locations and scientific tables are preserved.
+  Scientific algorithms/defaults, QC/retry policies and overwrite guards are
+  unchanged. Version remains 0.2.0 (unreleased); no publication or Phase 4 work.
+
+
 - Add the local `spice-lineage` wheel/sdist and `spice` console command;
   `SPICE.py` delegates to the same `spice_lineage.cli.main`. No publication.
 - Move the active Python helpers and seven unchanged R files into the package;
