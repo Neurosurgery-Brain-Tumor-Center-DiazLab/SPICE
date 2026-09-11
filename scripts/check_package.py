@@ -39,8 +39,8 @@ def inspect_artifacts(wheel, sdist):
                      {"spice_lineage/VERSION"})
     info = "spice_lineage-" + version + ".dist-info/"
     wheel_files = package_files | {info + p for p in (
-        "METADATA", "WHEEL", "RECORD", "entry_points.txt", "top_level.txt",
-        "licenses/LICENSE", "licenses/CITATION.cff")}
+    "METADATA", "WHEEL", "RECORD", "entry_points.txt", "top_level.txt",
+    "licenses/LICENSE")}
     with zipfile.ZipFile(wheel) as archive:
         actual = set(archive.namelist())
         if actual != wheel_files:
@@ -55,7 +55,9 @@ def inspect_artifacts(wheel, sdist):
         entries = configparser.ConfigParser()
         entries.read_string(archive.read(info + "entry_points.txt").decode())
         assert dict(entries["console_scripts"]) == {"spice": "spice_lineage.cli:main"}
-        for name in package_files | {info + "licenses/LICENSE", info + "licenses/CITATION.cff"}:
+        for name in package_files | {
+    info + "licenses/LICENSE",
+}:
             local = ROOT / (Path(name).name if "/licenses/" in name else name)
             assert archive.read(name) == local.read_bytes(), name
     # A source distribution includes development checks and their synthetic fixtures,
