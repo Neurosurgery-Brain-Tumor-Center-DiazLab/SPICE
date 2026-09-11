@@ -41,9 +41,11 @@ User text and dataset paths are passed through JSON and an exec argument list.
 The native `.ga` workflow is generated from its adjacent Format 2 YAML with
 pinned gxformat2. It uses owner iuc / repository iqtree / changeset e727e82945af /
 tool 2.4.0+galaxy2 (executable 2.4.0). DNA, SH-aLRT=1000 and UFBoot=1000 retain
-the validated support contract. Model defaults to TEST; the synthetic test
-explicitly selects JC, one thread and manual clone cutoff 0.10, as in the real
-integration fixture. Its tiny tree has no stable automatic-selection region;
+the validated support contract. Model defaults to TEST; model-selection criterion
+is explicitly BIC, preserving the SPICE IQ-TREE 2.4.0 invocation rather than the
+IUC form's AIC default. Required static checks and actual workflow-command checks
+guard that setting. The synthetic test explicitly selects JC, one thread and
+manual clone cutoff 0.10, as in the real integration fixture. Its tiny tree has no stable automatic-selection region;
 automatic defaults/criteria are unchanged. IQ-TREE 3 is excluded.
 
 Three ordinary input datasets are staged under exact standard bundle filenames.
@@ -93,14 +95,57 @@ Local Galaxy startup succeeded after the build constraint, but its upload
 worker failed in Python forkserver with an AF_UNIX invalid-argument error on
 WSL1. The attempt was stopped and BayesTraits removal verified. No local
 Galaxy functional pass is claimed; native hosted Linux supplies that gate.
-The first hosted run passed Filter, Clones and observed-only Plasticity. Its
-remaining failures were a CRLF-sensitive summary assertion (corrected) and the
-missing job-level BayesTraits environment (now explicitly configured). The real
-scientific job passed. First run: 34642191159; normal CI: 34642192212.
-Functional Galaxy and final hosted gates are still pending while this branch is
-being developed. Phase 6 must not be described as complete until the wrapper,
-workflow and final-head hosted jobs all succeed. This section and the PR will
-record their actual evidence before handoff.
+The complete hosted implementation run on `72361bc999d5a3c4b729f260d1a641a2997e3aeb`
+passed all six wrapper cases and the full end-to-end workflow, with zero skips:
+[manual integration/Galaxy 34643919901](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/actions/runs/34643919901).
+The Galaxy report records complete=true, published=false, bayestraits_removed=true
+and 716.20 seconds total. Native workflow evidence shows one filter, one IUC
+IQ-TREE, one clones, three ancestry, three plasticity and one summary job, all
+successful. Clone_1, Clone_2 and Clone_3 retain their corresponding trees,
+ancestry outputs and plasticity outputs. Dataset IDs were inspected across each
+paired job and into Summarize. Per-clone QC passed; all three requested
+permutations succeeded for every clone; probability bounds and the three-row
+BH summary passed the committed assertions.
+
+The actual IQ-TREE job identifies
+`toolshed.g2.bx.psu.edu/repos/iuc/iqtree/iqtree/2.4.0+galaxy2`, reports executable
+2.4.0 and runs DNA, JC, seed 12345, one thread, SH-aLRT=1000 and UFBoot=1000.
+Final command inspection additionally found the IUC default criterion AIC;
+the workflow now explicitly selects BIC to preserve SPICE's existing TEST
+behavior. JC has no model-selection choice, so the earlier synthetic pass did
+not expose this default mismatch. A regression rejects the recorded AIC command,
+and the final-head rerun must verify the actual BIC command as well as collection
+alignment. No IQ-TREE 3 executable or tool is used.
+
+The hosted Galaxy package was the unpublished local
+`spice-lineage-0.2.0-py_0.conda`, SHA-256
+`c993bcc1b6b6a495400ba4ba033ee598ba9b3b2e1bf4008309b9835fbfc2b46c`,
+resolved from `file:///home/runner/work/_temp/spice-galaxy/distribution/channel`.
+Its installed Conda record has the identical SHA and local URL, under
+`/home/runner/micromamba/envs/spice-galaxy-build/envs/__spice-lineage@0.2.0`.
+Every SPICE job checks the executable and site-packages import in that prefix.
+Both wrapper cases and mapped workflow jobs used real officially provisioned
+BayesTraits V4.1.3; the runner verified both pinned hashes and removal on exit.
+
+[Required CI 34643925768](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/actions/runs/34643925768)
+and the independent real scientific job passed on the same implementation head.
+The real job includes exact labeled/unlabeled seeded ancestry equivalence for
+both Newick and NEXUS and reports zero skips (48.35 seconds).
+[Full Conda/OCI regression 34643923728](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/actions/runs/34643923728)
+also passed: complete=true, published=false and zero skipped Conda/container
+checks. Its separately built local package SHA-256 is
+`9d59727a02c30e4d6bd7b9e2ca2266216adf7039b2557c4e2b5731f1ee1bcf63`.
+The local fixed-package Conda-only rerun passed with zero skips, SHA-256
+`11afb29f0c2265ff56f56b0ebb32aefff6a0c408bf15e052bfa8e6d395686175`;
+its container status is explicitly pending because this host lacks Docker.
+Separate build timestamps explain the different package hashes; each tested
+installation is checked against its own exact artifact and the checkout payload.
+
+The final-head required CI, real integration/Galaxy and distribution reruns are
+linked with their immutable commit in [lab PR #7](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/pull/7).
+That PR is the final-head acceptance record; this file preserves the detailed
+implementation-run evidence above. Phase 6 completion requires every final-head
+gate to pass. No local WSL1 Galaxy functional pass is claimed.
 
 ## Publication boundary
 
