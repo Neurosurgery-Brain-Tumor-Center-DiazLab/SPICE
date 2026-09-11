@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Add locked Linux Phase 1 CI with mandatory Python/R dependencies, zero-skip
+  regression checks, all-command CLI smoke checks, and exact real-filter example
+  assertions; document scope and reproducible local execution.
+- Reconcile the Conda target to R 4.3.3 / posterior 1.6.0 after the prior
+  R 4.2 / posterior >= 1.6 combination failed dependency resolution.
+
 - Add schema-v1 cell × variant count/metadata TSV bundles, strict validation,
   and an optional `import-monopogen` adapter preserving sites and annotations.
 - Route Monopogen convenience and direct input through the existing count filter;
