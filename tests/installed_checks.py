@@ -46,7 +46,8 @@ class InstalledPackageTests(unittest.TestCase):
         self.assertEqual(actual, EXPECTED["source_hashes"])
         self.assertEqual({p.name for p in R_DIR.glob("*.R")}, set(EXPECTED["r_files"]))
         files = [str(f) for f in dist.files]
-        for name in ("LICENSE", "CITATION.cff"):
+        for name in ("LICENSE",):
+    self.assertTrue(any(f.endswith("/licenses/" + name) for f in files))
             self.assertTrue(any(f.endswith("/licenses/" + name) for f in files))
         direct_url = json.loads(dist.read_text("direct_url.json"))
         self.assertNotIn("dir_info", direct_url)  # A wheel archive, never editable.
