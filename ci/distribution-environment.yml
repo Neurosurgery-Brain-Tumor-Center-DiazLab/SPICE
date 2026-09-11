@@ -1,0 +1,8 @@
+name: spice-distribution
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - conda-build=26.7.1
+  - conda-index=0.13.0
+  - conda-libmamba-solver=26.7.0

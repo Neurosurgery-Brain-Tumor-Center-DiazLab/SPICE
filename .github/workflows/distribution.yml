@@ -1,0 +1,50 @@
+name: SPICE Phase 5 Distribution
+
+# Independent, manual-only validation; never a required PR check.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  distribution:
+    name: Local Conda and OCI validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ github.ref }}
+          persist-credentials: false
+      - uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3
+        with:
+          micromamba-version: 2.3.2-0
+          environment-name: spice-distribution
+          environment-file: ci/distribution-linux-64.lock
+          create-args: --strict-channel-priority
+          cache-environment: false
+          cache-downloads: false
+          init-shell: none
+          generate-run-shell: true
+      - name: Build recipe, validate clean install, build and validate OCI image
+        shell: micromamba-shell {0}
+        run: python3 scripts/check_distribution.py --work-dir "$RUNNER_TEMP/spice-distribution"
+      - name: Retain text-only distribution evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: spice-distribution-text-evidence
+          retention-days: 14
+          if-no-files-found: warn
+          path: |
+            ${{ runner.temp }}/spice-distribution/*.log
+            ${{ runner.temp }}/spice-distribution/result.json
+            ${{ runner.temp }}/spice-distribution/package-files.json
+            ${{ runner.temp }}/spice-distribution/container-context/runtime-linux-64.lock
+            ${{ runner.temp }}/spice-distribution/conda outputs with spaces/result.json
+            ${{ runner.temp }}/spice-distribution/conda outputs with spaces/commands.json
+            ${{ runner.temp }}/spice-distribution/conda outputs with spaces/**/*.runtime.json
+            ${{ runner.temp }}/spice-distribution/container outputs with spaces/results with spaces/result.json
+            ${{ runner.temp }}/spice-distribution/container outputs with spaces/results with spaces/commands.json
+            ${{ runner.temp }}/spice-distribution/container outputs with spaces/results with spaces/**/*.runtime.json
