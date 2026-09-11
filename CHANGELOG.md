@@ -2,6 +2,19 @@
 
 ## Unreleased
 
+- Stage classic Bioconda-style Conda packaging from a checksum-pinned Phase 4
+  commit archive and an OCI image consuming the locally built Conda artifact.
+  Include R 4.3-compatible runtime dependencies and IQ-TREE 2.x; BayesTraits
+  remains externally supplied and is never downloaded by distribution builds.
+- Add a locked Linux packaging toolchain, clean external Conda-install and
+  container validation, artifact/source checksums, real synthetic filtering,
+  clones/IQ-TREE checks, and a manual-only Phase 5 distribution workflow.
+- Add inexpensive consistency/unsafe-lock regressions to existing required CI
+  and retain only text distribution evidence. Production Python/R code,
+  scientific algorithms/defaults and the required status name are unchanged.
+- Document local channel/container use and eventual Bioconda/BioContainer
+  submission. Keep 0.2.0 unreleased; no package/image, release/tag or Galaxy work.
+
 - Add `spice clones --tree TREE --output_directory DIR --prefix SAMPLE` and
   equivalent legacy-wrapper support. It classifies an existing IQ-TREE Newick
   tree without executing IQ-TREE, including no provenance-only version probe.

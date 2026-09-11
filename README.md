@@ -50,6 +50,17 @@ Use Python **3.10 or later** (the IQ-TREE helper uses `int | None` annotations),
 
 Monopogen is optional. Only users importing its results need to run [Monopogen](https://github.com/KChen-lab/Monopogen) upstream. Direct standard input requires no Monopogen installation or files. The importer uses base R to decode RDS files; the shared filter and phylogeny retain their R/IQ-TREE dependencies.
 
+### Staged Conda package and OCI image
+
+Phase 5 adds a local Conda/Bioconda-style recipe and an OCI image built from
+that package. Both include the Python/R runtime and IQ-TREE; BayesTraits remains
+externally supplied. **0.2.0 is unreleased and nothing is publicly published.**
+See [distribution staging](docs/distribution.md) for exact local build/install
+commands, validation requirements, container use and future Bioconda submission.
+The dedicated **SPICE Phase 5 Distribution** workflow is manual only; the
+existing required CI job remains unchanged. Check the
+[engineering handoff](docs/engineering-handoff.md) for observed results and blockers.
+
 ### Install from local source or a built wheel
 
 The local Python distribution is named **spice-lineage**; the executable is

@@ -1,0 +1,28 @@
+# Linux/amd64 manifest for mambaorg/micromamba:2.3.2, verified from Docker Hub.
+ARG BASE_IMAGE=mambaorg/micromamba:2.3.2@sha256:955819619f303e2aa1dc1ba89beefe7f326a378b3d0782a4a0d28b1cf11b68b6
+FROM ${BASE_IMAGE} AS install
+USER root
+COPY channel/ /tmp/channel/
+COPY runtime-linux-64.lock /tmp/runtime-linux-64.lock
+# The explicit lock includes the locally built package and the exact strict solve.
+RUN micromamba install --yes --name base --file /tmp/runtime-linux-64.lock \
+    && micromamba clean --all --yes
+
+FROM ${BASE_IMAGE}
+ARG SPICE_VERSION=0.2.0
+ARG SOURCE_REVISION=e6c23ca39f44a47a8351e49d642e977ad8a7f87b
+ARG PACKAGE_SHA256
+LABEL org.opencontainers.image.title="SPICE" \
+      org.opencontainers.image.version="${SPICE_VERSION}" \
+      org.opencontainers.image.source="https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE" \
+      org.opencontainers.image.licenses="GPL-3.0-only" \
+      org.opencontainers.image.revision="${SOURCE_REVISION}" \
+      org.opencontainers.image.description="Unreleased SPICE staging image; BayesTraits supplied externally" \
+      org.spice.package.sha256="${PACKAGE_SHA256}"
+COPY --from=install /opt/conda /opt/conda
+ENV PATH="/opt/conda/bin:${PATH}" \
+    PYTHONNOUSERSITE=1
+WORKDIR /data
+USER $MAMBA_USER
+ENTRYPOINT []
+CMD ["spice", "--help"]

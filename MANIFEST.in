@@ -11,3 +11,8 @@ include .github/workflows/ci.yml .github/workflows/integration.yml
 recursive-include tests/integration *.md *.tsv *.nwk
 global-exclude *.pyc
 global-exclude __pycache__
+
+include scripts/check_distribution.py
+include .github/workflows/distribution.yml
+recursive-include packaging *.yaml *.md Containerfile
+recursive-include tests/distribution *.py *.md *.nwk

@@ -187,3 +187,13 @@ are unchanged. Phase 4 adds only the shared clone interface and explicit R tree
 path; the R scientific body is unchanged. No SPICE,
 IQ-TREE or BayesTraits software is published; Bioconda/container/PyPI/Galaxy
 publication and scientist-led method validation remain out of scope.
+
+## Phase 5 regression and distribution checks
+
+The Phase 5 packaging branch must pass this unchanged real integration suite
+locally and through its existing manual workflow. The separate
+[distribution suite](distribution.md) builds/tests the Conda package and OCI
+image, reusing committed synthetic inputs and independent R tree assertions.
+It includes IQ-TREE and verifies BayesTraits is absent; it does not replace
+this suite's real BayesTraits execution. Both manual workflows are non-required
+for branch protection but their successful runs are Phase 5 acceptance gates.
