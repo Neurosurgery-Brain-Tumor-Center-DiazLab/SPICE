@@ -48,16 +48,43 @@ Use Python **3.10 or later** (the IQ-TREE helper uses `int | None` annotations),
 
 Monopogen is optional. Only users importing its results need to run [Monopogen](https://github.com/KChen-lab/Monopogen) upstream. Direct standard input requires no Monopogen installation or files. The importer uses base R to decode RDS files; the shared filter and phylogeny retain their R/IQ-TREE dependencies.
 
-### Download SPICE and install Python packages
+### Install from local source or a built wheel
+
+The local Python distribution is named **spice-lineage**; the executable is
+**spice** and the import namespace is **spice_lineage**. This distribution has not
+been published to PyPI or Bioconda; the name is not claimed to be reserved.
+Use Python 3.10+ and a virtual environment:
 
 ```bash
 git clone https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE.git
 cd SPICE
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install -r requirements.txt
-python3 SPICE.py --help
+python -m pip install .
+spice --version
+spice --help
 ```
+
+Alternatively, install an already built wheel (no source checkout is needed):
+
+```bash
+python3 -m venv /path/to/spice-env
+source /path/to/spice-env/bin/activate
+python -m pip install /path/to/spice_lineage-0.2.0-py3-none-any.whl
+cd /path/to/analysis
+spice --help
+```
+
+Both installations include the active R scripts and install the Python dependency
+`pandas>=1.5,<3` and its dependencies. They do **not** install R, R packages,
+IQ-TREE or BayesTraits; configure those separately below. The standalone scripts
+listed later are available in the Git checkout and are not installed by the wheel.
+
+All command examples below can use `spice` in place of `python3 SPICE.py`,
+with the same arguments, defaults and outputs. From a source checkout,
+`python3 -m pip install -r requirements.txt` and `python3 SPICE.py ...`
+remain supported; the wrapper uses the same CLI implementation as `spice`.
+For local builds and package checks, see [package development](docs/packaging.md).
 
 ### Install R packages
 
@@ -90,10 +117,12 @@ BayesTraits resolution tries `--bayestraits_bin`, then `BAYESTRAITS_BIN`, then `
 ### Check the installation
 
 ```bash
-python3 SPICE.py filter --help
-python3 SPICE.py phylogeny --help
-python3 SPICE.py ancestry --help
-python3 SPICE.py plasticity --help
+spice import-monopogen --help
+spice filter --help
+spice phylogeny --help
+spice ancestry --help
+spice plasticity --help
+spice summarize --help
 Rscript -e 'p <- c("dplyr","progress","ape","phangorn","phytools","ggplot2","ggtree","ggsci","coda","janitor","posterior"); stopifnot(all(vapply(p, requireNamespace, logical(1), quietly=TRUE)))'
 ```
 
@@ -102,17 +131,20 @@ Rscript -e 'p <- c("dplyr","progress","ape","phangorn","phytools","ggplot2","ggt
 ```bash
 conda env create -f environment.yml
 conda activate spice
+python -m pip install .
 Rscript scripts/install_R_dependencies.R
 python SPICE.py --version
 ```
 
 The `--version` flag prints the code version and exits. The observed server
 versions are recorded in [computing environment](docs/computing-environment.md).
-Every analysis writes `<prefix>.runtime.json` with the SPICE version, source
-hashes, git revision/status when available, Python/R package versions, executable
+Every analysis writes `<prefix>.runtime.json` with the SPICE version, package source
+hashes, git revision/status only for a verified SPICE checkout, Python/R package versions, executable
 paths/hashes, settings and completion status. A retained BayesTraits banner is
 included when available. Existing runtime records are preserved with timestamped
 filenames. Summaries write `<output-filename>.runtime.json` beside the output.
+Installed wheels work outside Git: Git fields explicitly report unavailable,
+while package Python/R SHA-256 hashes and other provenance remain available.
 See [CHANGELOG](CHANGELOG.md) for output-format changes and `CITATION.cff` for citation metadata.
 
 ## Input files
@@ -676,7 +708,9 @@ RDS/filter tests require R and the filter packages listed above.
 ## Required continuous-integration checks
 
 See [Phase 1 CI checks](docs/ci.md) for a locked Linux test environment and the
-single local command, `python3 scripts/check_ci.py`. The required job rejects
+source regression command, `python3 scripts/check_ci.py`. The same required job
+also builds and tests a non-editable wheel outside the checkout with
+`python3 scripts/check_package.py` (see [package development](docs/packaging.md)). The required job rejects
 skipped tests and executes real R filtering/QC on synthetic fixtures. It does not
 run real IQ-TREE or BayesTraits inference. Installation results, review status,
 and the remaining staged roadmap are in [engineering handoff](docs/engineering-handoff.md).
