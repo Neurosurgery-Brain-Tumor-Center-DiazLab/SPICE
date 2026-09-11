@@ -9,8 +9,10 @@ import shutil
 import subprocess
 from datetime import datetime, timezone
 
-ROOT = Path(__file__).resolve().parents[1]
-VERSION = (ROOT / 'VERSION').read_text().strip()
+from . import __version__ as VERSION
+from .paths import PACKAGE_DIR
+
+ROOT = PACKAGE_DIR
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -19,12 +21,53 @@ def sha256(path):
             digest.update(chunk)
     return digest.hexdigest()
 
-def probe(command, timeout=30):
+def probe(command, timeout=30, env=None):
     try:
-        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout)
+        result = subprocess.run(command, capture_output=True, text=True, timeout=timeout, env=env)
         return {'returncode': result.returncode, 'output': (result.stdout + result.stderr)[:12000].strip()}
     except (OSError, subprocess.TimeoutExpired) as exc:
         return {'unavailable': str(exc)}
+
+def git_probe(root, *arguments):
+    # Git environment overrides must not associate SPICE with another checkout.
+    env = {key: value for key, value in os.environ.items()
+           if not key.startswith("GIT_")}
+    return probe(["git", "-C", str(root), *arguments], env=env)
+
+
+def checkout_root(package_dir):
+    """Return a verified SPICE checkout, never an enclosing unrelated repo."""
+    package_dir = Path(package_dir).resolve()
+    root = package_dir.parent
+    if (package_dir.name != "spice_lineage" or not (root / ".git").exists()
+            or not all((root / name).is_file()
+                       for name in ("SPICE.py", "VERSION", "pyproject.toml"))):
+        return None
+    top = git_probe(root, "rev-parse", "--show-toplevel")
+    if top.get("returncode") != 0 or Path(top["output"]).resolve() != root:
+        return None
+    tracked = git_probe(root, "ls-files", "--error-unmatch", "SPICE.py", "VERSION")
+    if tracked.get("returncode") != 0:
+        return None
+    return root
+
+
+def source_provenance(package_dir):
+    package_dir = Path(package_dir).resolve()
+    source_files = [package_dir / "VERSION", *sorted(package_dir.glob("*.py")),
+                    *sorted((package_dir / "resources" / "r").glob("*.R"))]
+    hashes = {str(p.relative_to(package_dir.parent)): sha256(p) for p in source_files}
+    checkout = checkout_root(package_dir)
+    if checkout is None:
+        unavailable = {"unavailable": "Running package is not in a SPICE Git checkout"}
+        return {"source_root": str(package_dir), "source_sha256": hashes,
+                "git_commit": unavailable.copy(), "git_status": unavailable.copy()}
+    for name in ("SPICE.py", "VERSION"):
+        hashes[name] = sha256(checkout / name)
+    return {"source_root": str(package_dir), "source_sha256": hashes,
+            "git_commit": git_probe(checkout, "rev-parse", "HEAD"),
+            "git_status": git_probe(checkout, "status", "--porcelain")}
+
 
 def capture_runtime(args, root):
     metadata = {'spice_version': VERSION, 'started_utc': datetime.now(timezone.utc).isoformat(),
@@ -34,10 +77,7 @@ def capture_runtime(args, root):
     for name in ('pandas', 'numpy', 'pysam', 'tqdm'):
         try: metadata['python_packages'][name] = importlib.metadata.version(name)
         except importlib.metadata.PackageNotFoundError: metadata['python_packages'][name] = None
-    source_files = [root/'SPICE.py', root/'VERSION', *sorted((root/'scripts').glob('*.py')), *sorted((root/'scripts').glob('*.R'))]
-    metadata['source_sha256'] = {str(p.relative_to(root)):sha256(p) for p in source_files}
-    metadata['git_commit'] = probe(['git','-C',str(root),'rev-parse','HEAD'])
-    metadata['git_status'] = probe(['git','-C',str(root),'status','--porcelain'])
+    metadata.update(source_provenance(ROOT))
     rscript = shutil.which('Rscript')
     if rscript:
         code = 'cat(R.version.string,"\\n"); p <- installed.packages(); n <- intersect(c("ape","coda","janitor","posterior","dplyr","progress","phangorn","phytools","ggplot2","ggtree","ggsci"),rownames(p)); write.table(p[n,c("Package","Version"),drop=FALSE],row.names=FALSE,quote=FALSE,sep="\\t")'

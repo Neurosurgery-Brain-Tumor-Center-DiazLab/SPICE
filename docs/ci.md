@@ -83,3 +83,18 @@ the active R version; do not force the current Bioconductor release into old R.
 The existing BiocManager-based helper selects the matching release. The Phase 1
 lock does not install ggtree or validate its plotting compatibility. A successful
 solve of the general environment is not a successful full pipeline installation.
+
+## Phase 2 package checks
+
+The same **Phase 1 required checks** job retains its source/R checks and adds
+`python -m pip install -r ci/requirements-build.txt` followed by
+`python3 scripts/check_package.py`. No additional ruleset status-check name is
+needed. No artifacts are published and no repository secrets are used.
+
+The package checker builds wheel and sdist with an isolated backend, inspects
+their complete contents, installs the wheel non-editably in a fresh external
+venv, and checks actual R filtering, resource/version metadata, legacy equivalence,
+and provenance outside Git. Python runtime dependencies in the wheel install
+resolve within the declared compatible bounds; the source/R environment still
+uses the unchanged Phase 1 lock. Build frontend tooling is pinned separately.
+See [packaging.md](packaging.md) for commands and resource ownership.

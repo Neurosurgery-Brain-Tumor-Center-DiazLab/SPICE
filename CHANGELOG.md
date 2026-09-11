@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+- Add the local `spice-lineage` wheel/sdist and `spice` console command;
+  `SPICE.py` delegates to the same `spice_lineage.cli.main`. No publication.
+- Move the active Python helpers and seven unchanged R files into the package;
+  resolve R resources relative to the installed package. Scientific algorithms,
+  defaults, output tables and overwrite behavior are unchanged.
+- Use `spice_lineage/VERSION` for package metadata and runtime version; CI verifies
+  agreement with the checkout `VERSION` and `CITATION.cff`.
+- Runtime JSON retains its existing version/tool/package/status fields.
+  `source_sha256` keys now identify `spice_lineage/*.py`,
+  `spice_lineage/VERSION` and `spice_lineage/resources/r/*.R`; a verified checkout
+  also retains `SPICE.py` and `VERSION` hashes. New `source_root` identifies the
+  running package directory. Unrelated parent repositories and ambient `GIT_*`
+  overrides are ignored; installed wheels explicitly report Git unavailable.
+- Extend **Phase 1 required checks** with artifact inspection, fresh non-editable
+  installation, all-command help/version, real standard-input filtering,
+  legacy equivalence and provenance outside Git.
+
 - Add locked Linux Phase 1 CI with mandatory Python/R dependencies, zero-skip
   regression checks, all-command CLI smoke checks, and exact real-filter example
   assertions; document scope and reproducible local execution.
