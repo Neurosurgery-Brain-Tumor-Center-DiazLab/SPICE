@@ -1,9 +1,10 @@
-name: spice
+name: spice-ci
 channels:
   - conda-forge
 dependencies:
+  # Required Phase 1 subset of environment.yml; tree plotting/tools are later.
   - python=3.11
-  - pandas>=1.5,<3
+  - pandas=2.2.3
   - r-base=4.3.3
   - r-ape
   - r-coda
@@ -11,8 +12,3 @@ dependencies:
   - r-posterior=1.6.0
   - r-dplyr
   - r-progress
-  - r-phangorn
-  - r-phytools
-  - r-ggplot2
-  - r-ggsci
-  - r-biocmanager

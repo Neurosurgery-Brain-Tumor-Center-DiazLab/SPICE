@@ -1,0 +1,35 @@
+name: SPICE CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  phase1:
+    name: Phase 1 required checks
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: mamba-org/setup-micromamba@f457c30a868e4760d3a6fcea5f25dc655b8edf39 # v3
+        with:
+          micromamba-version: 2.3.2-0
+          environment-name: spice-ci
+          environment-file: ci/linux-64.lock
+          create-args: --strict-channel-priority
+          cache-environment: false
+          cache-downloads: false
+          init-shell: none
+          generate-run-shell: true
+      - name: Record resolved environment
+        shell: micromamba-shell {0}
+        run: micromamba list --explicit
+      - name: Python, R QC, CLI and real standard-input filtering
+        shell: micromamba-shell {0}
+        run: python3 scripts/check_ci.py
