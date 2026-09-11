@@ -55,7 +55,7 @@ git clone https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE.git
 cd SPICE
 python3 -m venv .venv
 source .venv/bin/activate
-python3 -m pip install pandas
+python3 -m pip install -r requirements.txt
 python3 SPICE.py --help
 ```
 
@@ -672,3 +672,11 @@ missing quality metadata, empty results and CLI parameter forwarding. External
 IQ-TREE/clone computation is mocked in the forwarding test; this test does not
 claim numerical tree-inference reproducibility across IQ-TREE runs or versions.
 RDS/filter tests require R and the filter packages listed above.
+
+## Required continuous-integration checks
+
+See [Phase 1 CI checks](docs/ci.md) for a locked Linux test environment and the
+single local command, `python3 scripts/check_ci.py`. The required job rejects
+skipped tests and executes real R filtering/QC on synthetic fixtures. It does not
+run real IQ-TREE or BayesTraits inference. Installation results, review status,
+and the remaining staged roadmap are in [engineering handoff](docs/engineering-handoff.md).

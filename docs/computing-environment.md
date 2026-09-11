@@ -50,3 +50,19 @@ For portable setup, use `environment.yml` followed by
 `Rscript scripts/install_R_dependencies.R`. Install external binaries separately.
 The environment definition specifies a compatible installation target; its full
 resolution in a new environment has not been tested here.
+
+## Phase 1 clean Linux test environment
+
+The historical inventory above is unchanged. The general Conda target now uses
+R 4.3.3 and posterior 1.6.0 because conda-forge has no posterior 1.6.0 build for
+R 4.2. The revised general environment solved successfully; its complete plotting
+installation was not executed. R 4.3 uses Bioconductor 3.18, as detailed in
+[CI installation notes](ci.md).
+
+The required Phase 1 subset was installed locally in isolated Ubuntu 20.04/WSL1
+prefixes with micromamba 2.3.2. Resolved direct versions: Python 3.11.16,
+pandas 2.2.3, R 4.3.3, ape 5.8.1, coda 0.19-4.1, janitor 2.2.1,
+posterior 1.6.0, dplyr 1.1.4, progress 1.2.3. NumPy resolved to 2.4.6.
+All 162 package URLs and SHA-256 hashes are in ../ci/linux-64.lock.
+See [engineering handoff](engineering-handoff.md) for actual check outcomes.
+This does not establish real IQ-TREE/BayesTraits or plotting compatibility.
