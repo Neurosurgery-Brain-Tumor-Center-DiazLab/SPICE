@@ -1,0 +1,101 @@
+<tool id="spice_clones" name="SPICE Clones" version="@TOOL_VERSION@+galaxy@VERSION_SUFFIX@" profile="@PROFILE@">
+    <description>classify clones from a supported IQ-TREE tree</description>
+    <macros><import>macros.xml</import></macros>
+    <expand macro="requirements"/>
+    <expand macro="version_command"/>
+    <expand macro="command"/>
+    <configfiles>
+        <configfile name="arguments"><![CDATA[
+#import json
+#set $argv = ['clones', '--tree', 'supported-tree.nwk', '--output_directory', 'out', '--prefix', 'spice', '--clone_cut_mode', str($clone_cut_mode), '--root_method', str($root_method)]
+#if $outgroup and str($outgroup).strip():
+    #silent $argv.extend(['--outgroup', str($outgroup)])
+#end if
+#if str($clone_cut_threshold) not in ('None', ''):
+    #silent $argv.extend(['--clone_cut_threshold', str($clone_cut_threshold)])
+#end if
+#silent $argv.extend(['--uf_support_threshold', str($uf_support_threshold)])
+#silent $argv.extend(['--sh_support_threshold', str($sh_support_threshold)])
+#silent $argv.extend(['--branch_cut_min', str($branch_cut_min)])
+#silent $argv.extend(['--branch_cut_max', str($branch_cut_max)])
+#silent $argv.extend(['--branch_cut_step', str($branch_cut_step)])
+#silent $argv.extend(['--min_trusted_ratio', str($min_trusted_ratio)])
+#silent $argv.extend(['--min_partition_stability', str($min_partition_stability)])
+#silent $argv.extend(['--stability_window', str($stability_window)])
+#silent $argv.extend(['--min_tips', str($min_tips)])
+${json.dumps({'argv': $argv, 'stage': [(str($tree), 'supported-tree.nwk')]})}
+        ]]></configfile>
+    </configfiles>
+    <inputs>
+        <param name="tree" type="data" label="IQ-TREE supported Newick tree" format="nhx"/>
+        <param argument="--clone_cut_mode" type="select" label="Clone cutoff selection">
+            <option value="auto" selected="true">auto</option>
+            <option value="manual">manual</option>
+        </param>
+        <param argument="--root_method" type="select" label="Rooting method">
+            <option value="midpoint" selected="true">midpoint</option>
+            <option value="outgroup">outgroup</option>
+            <option value="none">none</option>
+        </param>
+        <param argument="--outgroup" type="text" value="" optional="true" label="Outgroup tip names, separated by commas">
+            <sanitizer sanitize="false"/>
+            <validator type="regex" message="Outgroup names cannot contain control characters">^[^\x00-\x1f\x7f]*$</validator>
+        </param>
+        <param type="integer" label="Minimum UFBoot support" argument="--uf_support_threshold" value="90"/>
+        <param type="integer" label="Minimum SH-aLRT support" argument="--sh_support_threshold" value="75"/>
+        <param type="float" label="Minimum branch cutoff" argument="--branch_cut_min" value="0"/>
+        <param type="float" label="Maximum branch cutoff" argument="--branch_cut_max" value="0.5"/>
+        <param type="float" label="Branch cutoff step" argument="--branch_cut_step" value="0.01"/>
+        <param type="float" label="Manual clone cutoff (required in manual mode)" argument="--clone_cut_threshold" optional="true" min="0"/>
+        <param type="float" label="Minimum trusted-cluster ratio" argument="--min_trusted_ratio" value="0.95" min="0" max="1"/>
+        <param type="float" label="Minimum partition stability" argument="--min_partition_stability" value="0.95" min="0" max="1"/>
+        <param type="integer" label="Stable-region window" argument="--stability_window" value="3" min="2"/>
+        <param type="integer" label="Minimum tips per exported clone" argument="--min_tips" value="50" min="1"/>
+    </inputs>
+    <outputs>
+        <data name="assignments" format="tabular" from_work_dir="out/Clone/spice.clone_assignment.tsv" label="${tool.name} on ${on_string}: clone assignments"/>
+        <data name="rooting" format="tabular" from_work_dir="out/Phylo/spice.rooting_info.tsv" label="${tool.name} on ${on_string}: rooting information"/>
+        <data name="branch_cuts" format="tabular" from_work_dir="out/Phylo/branch_length_cut_analysis.tsv" label="${tool.name} on ${on_string}: branch cutoff sweep"/>
+        <data name="selection" format="tabular" from_work_dir="out/Phylo/spice.clone_cut_selection.tsv" label="${tool.name} on ${on_string}: cutoff selection"/>
+        <collection name="clone_trees" type="list" label="${tool.name} on ${on_string}: clone trees">
+            <discover_datasets pattern="(?P&lt;designation&gt;Clone_[0-9]+)\.nwk" directory="out/Clone" recurse="true" format="nhx"/>
+        </collection>
+        <data name="runtime" format="json" from_work_dir="out/spice.runtime.json" label="${tool.name} on ${on_string}: runtime provenance"/>
+    </outputs>
+    <tests>
+        <test>
+            <param name="tree" value="supported-tree.nwk"/>
+            <param name="clone_cut_mode" value="manual"/>
+            <param name="clone_cut_threshold" value="0.1"/>
+            <param name="min_tips" value="2"/>
+            <param name="outgroup" value="Ref"/>
+            <output name="assignments" file="clone-assignments.tsv"/>
+            <output name="rooting"><assert_contents><has_text_matching expression="spice\toutgroup\tRef"/></assert_contents></output>
+            <output name="selection"><assert_contents><has_text_matching expression="spice\tmanual\t0.1\t"/></assert_contents></output>
+            <output name="branch_cuts"><assert_contents><has_n_lines n="52"/></assert_contents></output>
+            <output_collection name="clone_trees" type="list" count="3">
+                <element name="Clone_1" file="Clone_1.nwk"/>
+                <element name="Clone_2" file="Clone_2.nwk"/>
+                <element name="Clone_3" file="Clone_3.nwk"/>
+            </output_collection>
+            <expand macro="runtime_test" command="clones"/>
+        </test>
+    </tests>
+    <help><![CDATA[
+Use the supported treefile output of IUC IQ-TREE 2.4.0+galaxy2, Tool Shed owner
+iuc, repository iqtree, revision e727e82945af. Node support labels are interpreted
+in SH-aLRT/UFBoot order. SPICE Clones performs no tree inference.
+
+Defaults match SPICE, including midpoint rooting, automatic cutoff selection and
+minimum 50 tips. Supplying outgroup names takes precedence over root_method.
+Use commas between multiple outgroup tips. Root method none requires an already
+rooted input. Manual selection requires a nonnegative cutoff.
+
+The list collection discovers SPICE's exported Clone_N.nwk files. Element IDs are
+Clone_N, exactly matching the assignment table. Map Ancestry over this collection
+with the full states table; preserve the same collection for Plasticity.
+
+@COMMON_HELP@
+    ]]></help>
+    <expand macro="citations"/>
+</tool>

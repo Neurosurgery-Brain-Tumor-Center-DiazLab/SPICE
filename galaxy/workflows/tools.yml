@@ -1,0 +1,8 @@
+tools:
+- tool_shed: toolshed.g2.bx.psu.edu
+  name: iqtree
+  owner: iuc
+  changeset_revision: e727e82945af
+  tool_shed_url: https://toolshed.g2.bx.psu.edu
+  revisions:
+  - e727e82945af

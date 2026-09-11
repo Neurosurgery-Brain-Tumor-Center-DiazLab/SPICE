@@ -1,0 +1,16 @@
+cell_id	state
+Ref	Progenitor
+A1	Progenitor
+A2	Differentiated
+A3	Progenitor
+A4	Differentiated
+B1	Progenitor
+B2	Differentiated
+B3	Progenitor
+B4	Differentiated
+C1	Progenitor
+C2	Differentiated
+C3	Progenitor
+C4	Differentiated
+LowSupport	Progenitor
+Excluded	Differentiated

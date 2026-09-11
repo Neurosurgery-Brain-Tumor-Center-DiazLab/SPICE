@@ -1,0 +1,83 @@
+<tool id="spice_filter" name="SPICE Filter" version="@TOOL_VERSION@+galaxy@VERSION_SUFFIX@" profile="@PROFILE@">
+    <description>filter a standard cell by variant bundle</description>
+    <macros><import>macros.xml</import></macros>
+    <expand macro="requirements"/>
+    <expand macro="version_command"/>
+    <expand macro="command"/>
+    <configfiles>
+        <configfile name="arguments"><![CDATA[
+#import json
+#set $argv = ['filter', 'standard', 'out', 'spice']
+#set $stage = [(str($matrix), 'standard/matrix.tsv'), (str($variants), 'standard/variants.tsv'), (str($cells), 'standard/cells.tsv')]
+#if $selected_cells:
+    #silent $stage.append((str($selected_cells), 'selected-cells.tsv'))
+    #silent $argv.append('selected-cells.tsv')
+#end if
+#silent $argv.extend(['--input_format', 'standard', '--variant_qc', str($variant_qc)])
+#silent $argv.extend(['--depth_ref', str($depth_ref)])
+#silent $argv.extend(['--depth_alt', str($depth_alt)])
+#silent $argv.extend(['--svm_pos_score', str($svm_pos_score)])
+#silent $argv.extend(['--ldrefine_merged_score', str($ldrefine_merged_score)])
+#silent $argv.extend(['--baf_alt', str($baf_alt)])
+#silent $argv.extend(['--min_alt_cells_per_snv', str($min_alt_cells_per_snv)])
+#silent $argv.extend(['--min_snvs_per_cell', str($min_snvs_per_cell)])
+#silent $argv.extend(['--threads', str($threads)])
+${json.dumps({'argv': $argv, 'stage': $stage})}
+        ]]></configfile>
+    </configfiles>
+    <inputs>
+        <param name="matrix" type="data" label="Cell by variant counts" format="tabular"/>
+        <param name="variants" type="data" label="Variant metadata" format="tabular"/>
+        <param name="cells" type="data" label="Cell metadata" format="tabular"/>
+        <param name="selected_cells" type="data" label="Optional selected cell barcodes" format="tabular" optional="true"/>
+        <param argument="--variant_qc" type="select" label="Variant metadata QC">
+            <option value="auto" selected="true">auto</option>
+            <option value="metadata">metadata</option>
+            <option value="none">none</option>
+        </param>
+        <param type="integer" label="Minimum metadata REF depth" argument="--depth_ref" value="5" min="0"/>
+        <param type="integer" label="Minimum metadata ALT depth" argument="--depth_alt" value="5" min="0"/>
+        <param type="float" label="Minimum SVM positive score" argument="--svm_pos_score" value="0.1" min="0" max="1"/>
+        <param type="float" label="Minimum LD refinement score" argument="--ldrefine_merged_score" value="0.25" min="0" max="1"/>
+        <param type="float" label="Maximum alternate allele frequency" argument="--baf_alt" value="0.5" min="0" max="1"/>
+        <param type="integer" label="Minimum ALT-supporting cells per variant" argument="--min_alt_cells_per_snv" value="5" min="0"/>
+        <param type="integer" label="Minimum variants per cell" argument="--min_snvs_per_cell" value="5" min="0"/>
+        <param type="integer" label="Filtering threads" argument="--threads" value="1" min="1"/>
+    </inputs>
+    <outputs>
+        <data name="fasta" format="fasta" from_work_dir="out/spice.SNV_mat.filter.fasta" label="${tool.name} on ${on_string}: filtered alignment"/>
+        <data name="matrix_out" format="csv" from_work_dir="out/spice.SNV_mat.filter.csv" label="${tool.name} on ${on_string}: matrix after count filtering"/>
+        <data name="selected_cells_out" format="tabular" from_work_dir="out/spice.selected_cells.tsv" label="${tool.name} on ${on_string}: cells selected before count filtering"/>
+        <data name="variants_out" format="csv" from_work_dir="out/spice.SNVs.filter.csv" label="${tool.name} on ${on_string}: variants after metadata QC, before count filtering"/>
+        <data name="runtime" format="json" from_work_dir="out/spice.runtime.json" label="${tool.name} on ${on_string}: runtime provenance"/>
+    </outputs>
+    <tests>
+        <test>
+            <param name="matrix" value="standard/matrix.tsv"/>
+            <param name="variants" value="standard/variants.tsv"/>
+            <param name="cells" value="standard/cells.tsv"/>
+            <param name="min_alt_cells_per_snv" value="2"/>
+            <param name="min_snvs_per_cell" value="1"/>
+            <output name="fasta"><assert_contents><has_text_matching expression="\A&gt;Ref&#10;GGC&#10;&#10;&gt;cell-2&#10;RRT&#10;&#10;&gt;cell_3&#10;AAT&#10;&#10;\Z"/></assert_contents></output>
+            <output name="matrix_out" file="filter.csv"/>
+            <output name="selected_cells_out">
+                <assert_contents><has_text text="cell_barcodes"/><has_text text="cell-2"/></assert_contents>
+            </output>
+            <expand macro="runtime_test" command="filter"/>
+        </test>
+    </tests>
+    <help><![CDATA[
+Upload matrix.tsv, variants.tsv and cells.tsv as separate tabular datasets.
+The matrix has cells in rows and REF/ALT read-count strings in variant columns.
+Optional selected cells must have one column named cell_barcodes. The tool stages
+the exact three bundle names and invokes SPICE filter with input_format standard.
+
+The FASTA feeds IUC IQ-TREE 2.4.0. Its supported tree then feeds SPICE Clones.
+The CSV matrix is the final count-filtered matrix. Selected-cell and variant audit
+tables describe selection before count filtering; they can include rows later removed.
+No matrix orientation, IUPAC encoding or filtering order is changed.
+
+@COMMON_HELP@
+    ]]></help>
+    <expand macro="citations"/>
+</tool>

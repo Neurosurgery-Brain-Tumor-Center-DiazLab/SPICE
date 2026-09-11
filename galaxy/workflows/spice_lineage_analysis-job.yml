@@ -1,0 +1,37 @@
+matrix:
+  class: File
+  path: ../tools/test-data/workflow/matrix.tsv
+  filetype: tabular
+variants:
+  class: File
+  path: ../tools/test-data/workflow/variants.tsv
+  filetype: tabular
+cells:
+  class: File
+  path: ../tools/test-data/workflow/cells.tsv
+  filetype: tabular
+states:
+  class: File
+  path: ../tools/test-data/workflow/states.tsv
+  filetype: tabular
+state_order:
+  class: File
+  path: ../tools/test-data/workflow/state_order.tsv
+  filetype: tabular
+min_alt_cells_per_snv: 1
+min_snvs_per_cell: 1
+min_tips: 2
+outgroup: Ref
+model: JC
+chains: 2
+iterations: 50000
+burnin: 10000
+sample_period: 100
+ancestry_stones: 0
+permutations: 3
+rhat_threshold: 1.2
+bulk_ess_threshold: 20
+tail_ess_threshold: 20
+posterior_cutoff: 0.5
+clone_cut_mode: manual
+clone_cut_threshold: 0.1
