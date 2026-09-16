@@ -4,6 +4,8 @@
 
 Choose the entry point that matches your data. The commands below are templates for study data, using production defaults unless a value is explicitly shown. Replace paths and prefixes; use fresh output directories for each analysis and each clone.
 
+For a runnable standard-bundle-to-summary sequence with reduced test settings, see the [end-to-end synthetic CLI exercise](Tutorial.md#end-to-end-synthetic-cli-exercise).
+
 ## From read counts to clones
 
 A direct standard bundle requires no Monopogen installation:

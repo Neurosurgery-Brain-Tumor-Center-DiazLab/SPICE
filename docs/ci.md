@@ -86,11 +86,12 @@ observed posterior version and avoids upgrading all analysis dependencies.
 
 R 4.3 pairs with Bioconductor 3.18 (R 4.2 paired with 3.16), per the
 [Bioconductor release table](https://bioconductor.org/about/release-announcements/).
-For the optional full plotting installation, use the Bioconductor release for
-the active R version; do not force the current Bioconductor release into old R.
-The existing BiocManager-based helper selects the matching release. The Phase 1
-lock does not install ggtree or validate its plotting compatibility. A successful
-solve of the general environment is not a successful full pipeline installation.
+For a full user installation, use the [cold-start-validated Conda recipe](../wiki/Installation.md)
+with compatible plotting dependencies. The historical BiocManager-based helper
+is not that validated route; the fresh R 4.3.3 cold start failed with unpinned
+CRAN/BiocManager resolution. The Phase 1 lock does not install ggtree or validate
+its plotting compatibility. A successful solve of the general environment is
+not a successful full pipeline installation.
 
 ## Phase 2 package checks
 

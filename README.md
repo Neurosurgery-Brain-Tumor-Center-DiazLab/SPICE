@@ -56,17 +56,9 @@ See the [ancestry and plasticity guide](wiki/Ancestry-and-Plasticity.md) for mea
 
 ## Minimal source quick start
 
-Use Python 3.10+ in a Unix-like environment. This installs the Python package and bundled R scripts; analysis also needs the stage-specific R packages and external executables described in [Installation](wiki/Installation.md).
+Follow **[Installation: validated Conda/micromamba source setup](wiki/Installation.md#recommended-installation-condamicromamba)** before running SPICE. It supplies the compatible Python 3.11 / R 4.3.3 dependencies and IQ-TREE 2.4.0 on Linux x86_64, then installs SPICE non-editably. Installing the Python package alone does not supply the complete analysis runtime.
 
-```bash
-git clone https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE.git
-cd SPICE
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install .
-spice --version
-spice --help
-```
+After installation, try the [end-to-end synthetic CLI exercise](wiki/Tutorial.md#end-to-end-synthetic-cli-exercise).
 
 The distribution name is `spice-lineage`, the command is `spice`, and the import namespace is `spice_lineage`. IQ-TREE 2.x (tested 2.4.0) is used for inference. BayesTraits remains externally supplied and is not redistributed.
 

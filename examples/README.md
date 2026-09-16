@@ -1,9 +1,9 @@
 # Tiny standard-input example
 
-From the repository root:
+After following [Installation](../wiki/Installation.md), run from the repository root:
 
 ```bash
-python3 SPICE.py filter examples/standard results/example example --input_format standard \
+spice filter examples/standard results/example example --input_format standard \
   --min_alt_cells_per_snv 2 --min_snvs_per_cell 1
 ```
 
