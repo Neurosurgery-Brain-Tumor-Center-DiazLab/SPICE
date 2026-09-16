@@ -1,5 +1,37 @@
 # SPICE engineering handoff — Phase 6 Galaxy
 
+## Independent v0.2.0 cold-start validation
+
+Bohyeon Yu independently tested commit
+`67df036aac10389ae03702dafc838e16334993bf` on Rocky Linux 8.10,
+Linux x86_64. The initial unpinned CRAN/BiocManager route failed on fresh
+R 4.3.3: downstream MASS/Matrix resolution was unavailable, phangorn/phytools
+did not install/load, and the ggtree route failed during treeio lazy loading
+with `object 'random_ref' not found`. This was an installation/documentation
+failure, not a SPICE scientific implementation failure.
+
+After compatibility-bounded conda-forge/Bioconda dependencies were installed,
+the complete workflow passed. A second rerun started from a fresh clone and
+an initially empty Conda environment, without inherited PYTHONPATH, R libraries,
+an existing SPICE package or old result directories. Using micromamba 2.3.2,
+strict channel priority and conda-forge before bioconda from the start, it
+passed without rescue installation: filtering, real IQ-TREE 2.4.0 and clone
+classification, all three ancestries, 9/9 requested plasticity permutations,
+summarize, runtime/source provenance, standalone clone equivalence/provenance,
+and fresh locked real-tool integration with zero skips.
+
+Observed versions were Python 3.11.16, R 4.3.3, IQ-TREE 2.4.0, ggtree 3.10.0,
+ggplot2 3.5.2, phangorn 2.12.1, phytools 2.5-2, posterior 1.6.1 and SPICE 0.2.0.
+Official BayesTraits V4.1.3 was independently downloaded and verified; it remains
+external and is not redistributed.
+
+Software/science, packaging/runtime behavior and cold-start execution passed.
+The release action is to promote the validated Conda dependency recipe into
+[user-facing Installation](../wiki/Installation.md), replacing the unpinned R
+route as the primary procedure. This record summarizes the supplied independent
+cold-start evidence; it does not claim that this documentation branch reran the
+scientific workflow. Version 0.2.0 remains unreleased.
+
 ## Starting gate
 
 Started from clean `codex/phase6-galaxy`, based on lab `origin/main`

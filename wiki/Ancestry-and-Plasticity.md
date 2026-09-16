@@ -2,6 +2,8 @@
 
 [Home](Home.md) · [Input requirements](Input-Data.md) · [Outputs](Outputs-and-Provenance.md)
 
+For a runnable standard-bundle-to-summary sequence with reduced test settings, see the [end-to-end synthetic CLI exercise](Tutorial.md#end-to-end-synthetic-cli-exercise).
+
 ## Reconstruct ancestral cell states
 
 SPICE uses BayesTraits MultiState MCMC on one supplied rooted tree. Every tip needs a cell-state annotation; extra cells in a sample-wide annotation table are ignored. Ancestral states are probabilistic estimates conditional on the tree, labels and model.
