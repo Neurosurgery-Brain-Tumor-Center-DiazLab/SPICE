@@ -6,6 +6,7 @@ include scripts/check_ci.py scripts/check_package.py scripts/check_ci_dependenci
 include scripts/monopogen_merge.R scripts/install_R_dependencies.R
 recursive-include examples *.md *.tsv
 recursive-include docs *.md
+recursive-include wiki *.md
 recursive-include ci *.yml *.lock *.txt
 include .github/workflows/ci.yml .github/workflows/integration.yml
 recursive-include tests/integration *.md *.tsv *.nwk

@@ -104,4 +104,4 @@ then `spice clones --tree ...` performs clone analysis. Both yield the same
 scientific clone outputs for the same tree and options. The real integration
 suite verifies that comparison with an arbitrary filename containing spaces.
 Phase 4 includes no Galaxy wrappers, Planemo workflows, Tool Shed work, or
-package/container publication. Version remains 0.2.0 unreleased.
+package/container publication. Current software version: 0.2.0; public channels require separate verification.

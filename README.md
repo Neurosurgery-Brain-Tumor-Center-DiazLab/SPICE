@@ -77,6 +77,6 @@ Detailed engineering records remain under [docs/](docs/), including [packaging](
 
 Analysis commands record settings, software versions, package source hashes, executable paths/hashes and completion status in runtime JSON. Git revision/status are available only for a verified source checkout; installed packages still retain source hashes. Preserve inputs, tree/state identity, diagnostics and logs alongside results. Synthetic CI fixtures validate software operation, not biological accuracy.
 
-**Version 0.2.0 remains unreleased.** Local Conda/OCI and Galaxy integration are staged; public PyPI, Bioconda, container, Tool Shed and GTN publication is not established. The code is licensed under [GPL-3.0-only](LICENSE). Cite the software version and commit used, following [CITATION.cff](CITATION.cff); authorship, corresponding contact and DOI decisions remain with the human maintainers before release.
+**Current software version: 0.2.0.** See the [release notes](docs/releases/v0.2.0.md). Bioconda, BioContainer, Galaxy Tool Shed, GTN, PyPI and other public distribution channels are published separately and should only be documented as available after verification. The code is licensed under [GPL-3.0-only](LICENSE). Cite Bohyeon Yu and Aaron Diaz and the software version and commit used, following [CITATION.cff](CITATION.cff).
 
 Contact: Bohyeon Yu, [bohyeon.yu@ucsf.edu](mailto:bohyeon.yu@ucsf.edu).

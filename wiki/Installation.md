@@ -2,7 +2,7 @@
 
 [Home](Home.md) · [Next: Input data](Input-Data.md)
 
-SPICE 0.2.0 is unreleased. Install from the lab source repository, or use a locally built package following the engineering guides. No public PyPI, Bioconda or container installation is claimed here.
+Current software version: **0.2.0**. Install from the lab source repository using the validated procedure below, or use a locally built package following the engineering guides. Public PyPI, Bioconda and container channels are published separately; verify availability before using a public package installation command.
 
 ## Recommended installation: Conda/micromamba
 

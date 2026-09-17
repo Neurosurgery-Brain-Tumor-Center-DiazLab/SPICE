@@ -5,9 +5,11 @@ Copy the entire **spice-lineage/** directory into
 public submission. The package-named directory follows Bioconda's folder-name
 lint rule. The recipe is classic **meta.yaml**, not an experimental format.
 
-This is **0.2.0, build 0, unreleased**. No public package, release, tag or
-BioContainer is created by this work. The source is the exact Phase 4 merge
-commit archive, verified with SHA-256. It does not follow main.
+This stages **0.2.0, build 0** for local validation. The source is an immutable
+tested serialization-fix commit archive, verified with SHA-256; it does not
+follow main. After the actual `v0.2.0` tag exists, finalize the public recipe
+with that tag archive and its calculated SHA-256. Public package and
+BioContainer availability must be verified separately.
 
 See [distribution.md](../../docs/distribution.md) for local build commands,
 dependency policy, validation, evidence and the eventual submission checklist.

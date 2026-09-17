@@ -2,12 +2,12 @@
 
 Five native tools wrap installed `spice-lineage=0.2.0`: Filter, Clones,
 Ancestry, Plasticity and Summarize. Wrapper version is `0.2.0+galaxy0`,
-profile `25.0`. Software version 0.2.0 remains unreleased.
+profile `25.0`. Current software version: **0.2.0**.
 
 See [the Galaxy guide](../docs/galaxy.md) for administration, local Planemo
 validation and the publication boundary, and [the tutorial draft](training/tutorial.md)
-for synthetic data and collection mapping. Nothing has been uploaded to either
-Tool Shed or GTN. Public portability requires a later Bioconda publication and
+for synthetic data and collection mapping. Tool Shed and GTN publication
+require separate verification. Public portability requires Bioconda availability and
 administrator provision of BayesTraits.
 
 - `tools/`: shared macros, five XML wrappers, orchestration-only JSON adapter,

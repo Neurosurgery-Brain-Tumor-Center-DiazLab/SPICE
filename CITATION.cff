@@ -5,6 +5,10 @@ title: "SPICE: Single-cell Plasticity Inference and Clonal Evolution"
 authors:
   - family-names: Yu
     given-names: Bohyeon
+    orcid: "https://orcid.org/0000-0002-1892-7790"
+  - family-names: Diaz
+    given-names: Aaron
+    orcid: "https://orcid.org/0000-0001-9059-9501"
 version: 0.2.0
 repository-code: "https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE"
 license: GPL-3.0-only

@@ -77,7 +77,7 @@ def inspect_artifacts(wheel, sdist):
         "ci/requirements-galaxy.txt", "ci/galaxy-build-constraints.txt",
         "galaxy/tools/.shed.yml",
     }
-    for pattern in ("docs/*.md", "tests/*.py", "tests/*.R",
+    for pattern in ("docs/**/*.md", "wiki/*.md", "tests/*.py", "tests/*.R",
                     "tests/integration/**/*.py", "tests/integration/**/*.R",
                     "tests/integration/**/*.md", "tests/integration/**/*.tsv",
                     "tests/integration/**/*.nwk", "tests/distribution/**/*.py",
