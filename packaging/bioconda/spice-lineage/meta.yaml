@@ -67,4 +67,5 @@ about:
     SPICE performs somatic SNV filtering, IQ-TREE lineage inference,
     clone classification, ancestral-state inference and plasticity analysis.
     BayesTraits V4.1.3 is externally supplied and is not redistributed.
-    This unreleased staging recipe is for local and CI validation only.
+    This staging recipe is for local and CI validation only.
+    Finalize the public source and checksum after the actual v0.2.0 tag exists.

@@ -1,7 +1,7 @@
 class: GalaxyWorkflow
 format-version: v2.0
 name: SPICE lineage analysis (IQ-TREE 2.4.0)
-doc: Unreleased SPICE 0.2.0 Galaxy workflow. Native IQ-TREE 2.4.0; clone collections preserve
+doc: SPICE 0.2.0 Galaxy workflow. Native IQ-TREE 2.4.0; clone collections preserve
   identity through ancestry, plasticity and BH summaries. BayesTraits is administrator-provided.
   Production defaults are distinct from the synthetic test job.
 license: GPL-3.0-only

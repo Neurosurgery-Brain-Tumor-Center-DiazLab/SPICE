@@ -181,7 +181,7 @@ The installed assertions require space-containing output paths and complete
 chain logs at those original locations. A fast real-file regression and
 the installed-wheel Newick fixture verify preservation.
 
-The version remains 0.2.0 (unreleased); this compatibility correction is recorded
+This compatibility correction was validated before release and is recorded
 in CHANGELOG.md. Scientific algorithms/defaults, tables and overwrite guards
 are unchanged. Phase 4 adds only the shared clone interface and explicit R tree
 path; the R scientific body is unchanged. No SPICE,

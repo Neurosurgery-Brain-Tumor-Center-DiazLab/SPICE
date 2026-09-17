@@ -60,14 +60,14 @@ unset PYTHONPATH PYTHONHOME && PYTHONNOUSERSITE=1 python '$__tool_directory__/ru
     <xml name="citations">
         <citations>
             <citation type="bibtex">@misc{spice,
-                author = {Bohyeon Yu},
+                author = {Yu, Bohyeon and Diaz, Aaron},
                 title = {SPICE: Single-cell Plasticity Inference and Clonal Evolution},
                 url = {https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE},
-                note = {Software version 0.2.0, unreleased}
+                note = {Software version 0.2.0}
             }</citation>
         </citations>
     </xml>
-    <token name="@COMMON_HELP@">SPICE 0.2.0 is unreleased. Cite the software version and repository commit used.
+    <token name="@COMMON_HELP@">Current software version: 0.2.0. Cite Bohyeon Yu and Aaron Diaz, the software version and repository commit used.
 Production defaults match the installed SPICE CLI. Inspect runtime provenance and QC
 before interpreting results. The bundled synthetic test settings are execution tests,
 not recommended settings for scientific inference.</token>

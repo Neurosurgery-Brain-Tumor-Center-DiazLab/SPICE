@@ -1,114 +1,136 @@
 # Changelog
 
-## Unreleased
+## 0.2.0
 
-- Fix BayesTraits V4 parsing of IQ-TREE-supported clone trees by omitting internal
-  support-label metadata only from the temporary NEXUS subprocess copy. Preserve
-  the original input/supports, node identities, rooted topology, branch lengths,
-  fingerprints and scientific calculations. Add Newick/NEXUS invariance and
-  real installed-wheel seeded ancestry equivalence regressions.
+### Standard input and filtering
 
-- Stage five native Galaxy 25.0 wrappers (0.2.0+galaxy0), shared metadata,
-  synthetic Planemo tests and a clone-collection workflow using pinned IUC
-  IQ-TREE 2.4.0+galaxy2, changeset e727e82945af. Ancestry/plasticity retain
-  aligned clone identifiers through the existing SPICE BH summary. Pin BIC
-  explicitly in the IUC workflow to preserve SPICE's IQ-TREE model selection.
-- Add external local-Conda Galaxy validation and a separate manual Galaxy job
-  to the existing integration workflow. BayesTraits is officially acquired,
-  checksum-verified and removed; server deployment needs an administrator's
-  executable. Required PR CI remains fast with static/default/manifest checks.
-- Add Tool Shed staging metadata and a repository-local GTN-style tutorial
-  draft. Keep 0.2.0 unreleased; scientific methods/defaults and output schemas
-  are unchanged. No Tool Shed, GTN, package, container, release or tag publication.
-
-- Stage classic Bioconda-style Conda packaging from a checksum-pinned Phase 4
-  commit archive and an OCI image consuming the locally built Conda artifact.
-  Include R 4.3-compatible runtime dependencies and IQ-TREE 2.x; BayesTraits
-  remains externally supplied and is never downloaded by distribution builds.
-- Add a locked Linux packaging toolchain, clean external Conda-install and
-  container validation, artifact/source checksums, real synthetic filtering,
-  clones/IQ-TREE checks, and a manual-only Phase 5 distribution workflow.
-- Add inexpensive consistency/unsafe-lock regressions to existing required CI
-  and retain only text distribution evidence. Production Python/R code,
-  scientific algorithms/defaults and the required status name are unchanged.
-- Document local channel/container use and eventual Bioconda/BioContainer
-  submission. Keep 0.2.0 unreleased; no package/image, release/tag publication.
-
-- Add `spice clones --tree TREE --output_directory DIR --prefix SAMPLE` and
-  equivalent legacy-wrapper support. It classifies an existing IQ-TREE Newick
-  tree without executing IQ-TREE, including no provenance-only version probe.
-- Share clone/rooting option registration and the authoritative R execution path
-  with `phylogeny`. Pass the actual inferred tree path or supplied tree as R
-  argument 16; preserve the old 15-argument R form and all scientific parameters,
-  methods, defaults, output names and schemas.
-- Add required fast routing/default/validation/provenance regressions and real
-  installed-wheel combined-versus-standalone equivalence checks using an
-  arbitrary external tree path containing spaces. Reuse the manual-only
-  **SPICE Phase 3 Integration** workflow; required CI is unchanged.
-- Keep 0.2.0 unreleased. No package/container publication.
-
-- Add real IQ-TREE 2.4.0 / BayesTraits V4.1.3 integration through an external,
-  non-editable wheel install, committed synthetic fixtures, strict output/QC/
-  provenance assertions, and a dedicated SHA-256-pinned Linux dependency lock.
-- Add **SPICE Phase 3 Integration**, triggered only by workflow_dispatch and
-  not required for PR merge. The runner verifies the official BayesTraits
-  archive/binary hashes, deletes downloaded executables after the run, and
-  retains only text evidence in the workflow artifact.
-- Fix two reproduced BayesTraits subprocess integration defects: convert accepted
-  Newick input to full-precision NEXUS for V4; use a chain-local LogFile basename
-  to support output directories with spaces. Original tree fingerprints,
-  node identities, log locations and scientific tables are preserved.
-  Scientific algorithms/defaults, QC/retry policies and overwrite guards are
-  unchanged. Version remains 0.2.0 (unreleased); no publication.
-
-
-- Add the local `spice-lineage` wheel/sdist and `spice` console command;
-  `SPICE.py` delegates to the same `spice_lineage.cli.main`. No publication.
-- Move the active Python helpers and seven unchanged R files into the package;
-  resolve R resources relative to the installed package. Scientific algorithms,
-  defaults, output tables and overwrite behavior are unchanged.
-- Use `spice_lineage/VERSION` for package metadata and runtime version; CI verifies
-  agreement with the checkout `VERSION` and `CITATION.cff`.
-- Runtime JSON retains its existing version/tool/package/status fields.
-  `source_sha256` keys now identify `spice_lineage/*.py`,
-  `spice_lineage/VERSION` and `spice_lineage/resources/r/*.R`; a verified checkout
-  also retains `SPICE.py` and `VERSION` hashes. New `source_root` identifies the
-  running package directory. Unrelated parent repositories and ambient `GIT_*`
-  overrides are ignored; installed wheels explicitly report Git unavailable.
-- Extend **Phase 1 required checks** with artifact inspection, fresh non-editable
-  installation, all-command help/version, real standard-input filtering,
-  legacy equivalence and provenance outside Git.
-
-- Add locked Linux Phase 1 CI with mandatory Python/R dependencies, zero-skip
-  regression checks, all-command CLI smoke checks, and exact real-filter example
-  assertions; document scope and reproducible local execution.
-- Reconcile the Conda target to R 4.3.3 / posterior 1.6.0 after the prior
-  R 4.2 / posterior >= 1.6 combination failed dependency resolution.
-
-- Add schema-v1 cell × variant count/metadata TSV bundles, strict validation,
-  and an optional `import-monopogen` adapter preserving sites and annotations.
-- Route Monopogen convenience and direct input through the existing count filter;
+- Add schema-v1 cell × variant count bundles (`matrix.tsv`, `variants.tsv`,
+  `cells.tsv`), strict validation and an optional `import-monopogen` adapter
+  that preserves sites and annotations.
+- Route direct and Monopogen inputs through the same count filter;
   `phylogeny --input_format standard|monopogen` continues through clone cutting.
-- Remove the unused composition-test inclusion CLI flag.
-- Preserve metadata QC defaults, support ordering, clone selection, rooting and
-  IQ-TREE resource handling; fix FASTA metadata-name collisions and normalize
-  combined-workflow output paths.
-- Add real-R import/filter equivalence and schema/forwarding regression tests.
+  Preserve metadata QC, cell selection and filtering defaults.
+- Fix FASTA metadata-name collisions and normalize combined-workflow output
+  paths. Remove the unused composition-test inclusion CLI flag.
 
-## 0.2.0 — unreleased
+### Packaging and CLI
 
-- Execute IQ-TREE with argument lists and quote generated shell scripts.
-- Identify posterior columns by unique state codes (`posterior_state_0`, etc.).
-- Validate tree branch lengths and finite state-order values.
-- Record QC policy and enforce observed/permutation compatibility.
+- Provide the `spice-lineage` wheel/sdist, `spice_lineage` import namespace and
+  seven-command `spice` CLI. The legacy `SPICE.py` wrapper delegates to the same
+  entry point. Package active Python helpers and seven R resources, resolving
+  resources relative to the installed package.
+- Use `spice_lineage/VERSION` for package/runtime version and check agreement
+  with `VERSION` and `CITATION.cff`. Align citation and package authorship with
+  the approved software authors Bohyeon Yu and Aaron Diaz, including ORCIDs.
+- Include the repository-local user guide and release notes in the sdist;
+  inspect artifact contents and test fresh non-editable installation, all
+  command help/version routes, real filtering and legacy equivalence.
 - Remove the unused `btw` dependency from the main CLI.
-- Add runtime provenance, environment definition, installation helper and version command.
-- Add clone-result aggregation with BH-adjusted p-values.
-- Resolve BayesTraits in the legacy runner from environment/PATH.
 
-Results without the new QC policy metadata require a new ancestry run before use
-with the updated plasticity command. Posterior column names now use state codes;
-join `.state_mapping.tsv` to recover original state labels.
+### Phylogeny and clone classification
+
+- Run IQ-TREE with argument lists and quote generated shell scripts. Validate
+  lineage inference with **IQ-TREE 2.4.0**; retain support ordering, rooting,
+  clone-selection methods/defaults and resource handling.
+- Add standalone `spice clones --tree TREE --output_directory DIR --prefix SAMPLE`
+  and legacy-wrapper support for an existing supported IQ-TREE Newick tree.
+  It never executes IQ-TREE, including for a version probe.
+- Share clone/rooting options and the authoritative R execution path with
+  `phylogeny`; pass the actual tree path explicitly while preserving the legacy
+  15-argument R form. Verify combined-versus-standalone equivalence with real
+  installed-wheel tests, including external paths containing spaces.
+
+### Ancestral-state inference and QC
+
+- Add modern convergence diagnostics, deterministic MCMC seeds, fresh retries
+  with retained evidence, downstream QC gating and confidence-cutoff recalculation.
+  Allow identical constant node probabilities across chains while retaining
+  explicit diagnostic status and strict model QC.
+- Identify posterior columns by unique state codes (`posterior_state_0`, etc.).
+  Validate tree branch lengths and finite state-order values. Record QC policy
+  and enforce observed/permutation compatibility.
+- Serialize accepted Newick input as full-precision temporary NEXUS for
+  BayesTraits V4. Omit internal support-label metadata only from that subprocess
+  copy; preserve original trees/supports, node identities, rooted topology,
+  branch lengths, fingerprints and scientific calculations. Cover this with
+  format invariance and real seeded ancestry equivalence checks.
+- Use chain-local BayesTraits LogFile basenames so output paths containing
+  spaces work. Resolve BayesTraits in the legacy runner from environment/PATH.
+  **BayesTraits V4.1.3 remains external and is not redistributed.**
+
+### Plasticity and clone-level summary
+
+- Quantify ordered-state lineage transitions and dedifferentiation-based
+  plasticity, with tip-state permutation testing and QC-compatible ancestry.
+- Add clone-result aggregation with Benjamini–Hochberg adjusted p-values over
+  the planned family of clone tests, retaining incomplete/failed-test status.
+
+### Reproducibility and provenance
+
+- Record software/tool/package versions, settings, executable identity,
+  completion status and source hashes in runtime JSON.
+- Package source hashes identify `spice_lineage/*.py`, `spice_lineage/VERSION`
+  and `spice_lineage/resources/r/*.R`; `source_root` identifies the running
+  package. Verified checkouts also retain `SPICE.py` and root `VERSION` hashes.
+  Ignore unrelated parent repositories and ambient `GIT_*` overrides;
+  installed wheels explicitly report Git unavailable.
+- Add locked Linux CI with mandatory Python/R dependencies, zero-skip checks,
+  CLI smoke tests and exact synthetic filtering assertions. Use R 4.3.3 and
+  posterior 1.6.0 after the earlier R 4.2 combination failed to resolve.
+
+### Distribution and external-tool validation
+
+- Stage a classic Bioconda-style recipe with an immutable checksum-pinned
+  source and an OCI image consuming the locally built Conda artifact. Include
+  compatible R runtime dependencies and IQ-TREE 2.x; distribution builds do
+  not download or bundle BayesTraits.
+- Add a locked Linux packaging toolchain and separate manual full Conda/OCI
+  validation with clean external installs, artifact/source hashes, real
+  filtering, clones/IQ-TREE checks and text-only evidence.
+- Add real **IQ-TREE 2.4.0 / BayesTraits V4.1.3** integration through an external
+  non-editable wheel, synthetic fixtures and strict output/QC/provenance checks.
+  Verify official BayesTraits archive/binary checksums, remove downloaded
+  executables after testing and retain only text evidence.
+- Public distribution channels require separate publication and verification.
+  After the actual `v0.2.0` tag exists, finalize the public Bioconda recipe using
+  its real tag archive and calculated SHA-256.
+
+### Galaxy integration
+
+- Provide five native Galaxy 25.0 wrappers (`0.2.0+galaxy0`), shared metadata,
+  synthetic Planemo tests and a clone-collection workflow using pinned IUC
+  IQ-TREE **2.4.0+galaxy2**, changeset `e727e82945af`. Pin BIC explicitly to
+  preserve SPICE model selection. Retain aligned clone identifiers through
+  ancestry/plasticity and the existing BH summary.
+- Add external local-Conda Galaxy validation as a separate job in the manual
+  integration workflow. Acquire BayesTraits from its official source, verify
+  checksums and remove it after validation; server deployment requires an
+  administrator-provided executable. Required PR CI retains fast static,
+  default and manifest checks.
+- Supply Tool Shed staging metadata and a repository-local GTN-style tutorial
+  draft; public Tool Shed/GTN availability requires separate verification.
+
+### Documentation and cold-start validation
+
+- Make the repository-local wiki the canonical user guide, with a concise
+  README, installation instructions and a discoverable end-to-end CLI exercise.
+- Document the independently validated Conda/micromamba installation after
+  unpinned CRAN/BiocManager resolution failed in a fresh R 4.3.3 environment.
+- Independent cold-start validation passed non-editable installation, `pip check`,
+  all seven commands, tiny filtering and a 13-cell × 696-site synthetic pipeline:
+  IQ-TREE 2.4.0, three expected clone partitions, standalone clone equivalence,
+  ancestry QC for all clones, 9/9 requested permutations, summarize and provenance.
+  A fresh locked real-tool integration also passed with zero skips.
+- Validation scope is **Linux x86_64** and synthetic software checks; it does not
+  establish biological accuracy or native Windows/macOS support.
+
+### Compatibility notes
+
+Results without the new QC-policy metadata require a new ancestry run before
+use with the updated plasticity command. Posterior columns use state codes;
+join `.state_mapping.tsv` to recover original state labels. BayesTraits V4
+NEXUS serialization affects only the temporary subprocess tree copy. BayesTraits
+remains separately supplied; IQ-TREE 2.4.0 is the validated inference version.
 
 ## Previous main snapshots
 

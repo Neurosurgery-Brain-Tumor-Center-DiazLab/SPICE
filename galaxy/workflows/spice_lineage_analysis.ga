@@ -2,7 +2,7 @@
   "name": "SPICE lineage analysis (IQ-TREE 2.4.0)",
   "a_galaxy_workflow": "true",
   "format-version": "0.1",
-  "annotation": "Unreleased SPICE 0.2.0 Galaxy workflow. Native IQ-TREE 2.4.0; clone collections preserve identity through ancestry, plasticity and BH summaries. BayesTraits is administrator-provided. Production defaults are distinct from the synthetic test job.",
+  "annotation": "SPICE 0.2.0 Galaxy workflow. Native IQ-TREE 2.4.0; clone collections preserve identity through ancestry, plasticity and BH summaries. BayesTraits is administrator-provided. Production defaults are distinct from the synthetic test job.",
   "tags": [],
   "license": "GPL-3.0-only",
   "uuid": "9a67990e-bc24-40b5-a8fb-54e338de73dc",

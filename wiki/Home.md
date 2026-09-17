@@ -4,7 +4,7 @@
 
 **SPICE: Single-cell Plasticity Inference and Clonal Evolution** combines somatic SNV filtering, phylogenetic inference and subclone classification, ancestral cell-state reconstruction, and cellular plasticity analysis. It uses IQ-TREE for lineage inference and BayesTraits MultiState MCMC to estimate ancestral states. Ordered cell states then define self-renewal, differentiation, and dedifferentiation along lineage edges.
 
-This repository-local wiki is the canonical, version-controlled user documentation. It describes the post-Phase-6 implementation, version **0.2.0 (unreleased)**. It may later be mirrored to the GitHub Wiki; no mirror or publication is implied.
+This repository-local wiki is the canonical, version-controlled user documentation. Current software version: **0.2.0**. See the [release notes](../docs/releases/v0.2.0.md) and [distribution status](Citation-and-Release.md).
 
 ## Start here
 

@@ -1,10 +1,10 @@
-# Conda and OCI distribution staging (Phase 5)
+# Conda and OCI distribution staging
 
-SPICE **0.2.0 remains unreleased**. These recipes and scripts build local review
-artifacts only. Nothing has been published to PyPI, Anaconda.org/Bioconda,
-GHCR, Quay or Docker Hub; no release or tag is created. Public installation
-commands are not yet available. Phase 6 Galaxy testing uses this unpublished
-local package; see [the Galaxy guide](galaxy.md).
+Current software version: **0.2.0**. These recipes and scripts build local
+review artifacts only. Public PyPI, Bioconda, BioContainer and other registry
+channels are published separately; verify availability before documenting
+public installation commands. Galaxy validation uses the local staging package;
+see [the Galaxy guide](galaxy.md).
 
 ## Architecture and immutable source
 
@@ -15,13 +15,18 @@ The recipe builds the existing Python distribution with pip, with dependency
 installation, build isolation and pip caching disabled. Conda supplies the
 actual build requirements: Python, pip and setuptools >=77.
 
-The immutable source is the tested Phase 6 serialization-fix commit:
+The immutable staging source is the tested serialization-fix commit:
 d0570d923d7880139a3f4c0a7a2b2e7ce65bc307. The commit-addressed GitHub archive
 has SHA-256
 47ab47321d96bb09c5c2089a0155a029e415610929fef43aa8522f51d6fb703b.
 No moving branch, invented tag or placeholder hash is used. A commit archive
 also avoids the Bioconda lint restriction on git_url/git_rev.
-The staged source now includes the minimal BayesTraits serialization fix for
+This source predates the release-candidate metadata and is intentionally
+retained for staging validation. After the actual `v0.2.0` tag exists, change
+the public Bioconda recipe to its tag archive and calculate the real archive
+SHA-256. Do not substitute an invented tag URL or placeholder checksum.
+
+The staged source includes the minimal BayesTraits serialization fix for
 IQ-TREE internal support labels. Only the temporary subprocess NEXUS copy omits
 that metadata; original trees/supports, fingerprints, node identities and
 scientific calculations remain unchanged. Exact seeded ancestry equivalence
@@ -181,9 +186,9 @@ After opening the lab-repository PR:
 
 ~~~bash
 gh workflow run integration.yml --repo Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE \
-  --ref codex/phase5-packaging
+  --ref codex/release-v0.2.0-rc
 gh workflow run distribution.yml --repo Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE \
-  --ref codex/phase5-packaging
+  --ref codex/release-v0.2.0-rc
 ~~~
 
 GitHub may require a newly introduced manual workflow to be registered on the
@@ -201,11 +206,12 @@ that run; they are not hard-coded into the recipe.
 
 ## Eventual Bioconda submission (separate authorization)
 
-1. Review/merge Phase 5 only after required source/package CI and both manual
-   workflows are green. Obtain separate maintainer authorization for publication.
-2. Choose/review the public version and source release. Prefer a real official
-   release tag/archive; update version/build/source SHA-256 consistently. Never
-   invent a release tag or reuse this unreleased staging build as a public release.
+1. Review and merge the release-candidate PR only after required source/package
+   CI and both manual workflows are green. Obtain separate maintainer
+   authorization for tagging and publication.
+2. After `v0.2.0` is tagged, update the public recipe to the actual tag archive
+   and its calculated SHA-256. Never invent a tag or reuse the older staging
+   source as the public release.
 3. Confirm the software name remains available, the license/source and all runtime
    constraints are appropriate, and a consenting recipe-maintainer handle.
 4. In a separately authorized Bioconda contribution, copy the package-named
@@ -217,8 +223,8 @@ that run; they are not hard-coded into the recipe.
    associated BioContainer identifiers before documenting public install commands.
    Bioconda infrastructure builds package-associated BioContainers; this staging
    PR does not establish that a public SPICE BioContainer exists.
-7. Authorize Galaxy/Planemo separately after distribution validation and release
-   decisions. No Galaxy implementation is part of Phase 5.
+7. Authorize Tool Shed and GTN publication separately after distribution
+   validation and release decisions; verify each public identifier.
 
 References, checked for this phase:
 [Bioconda contribution workflow](https://bioconda.github.io/contributor/workflow.html),
@@ -227,7 +233,7 @@ References, checked for this phase:
 [Bioconda contributions and automated containers](https://bioconda.github.io/contributor/index.html),
 [micromamba container usage](https://micromamba-docker.readthedocs.io/en/stable/advanced_usage.html).
 
-## Phase 6 Galaxy staging
+## Galaxy staging
 
 The [Galaxy guide](galaxy.md) documents five native wrappers and a collection
 workflow pinned to IUC IQ-TREE 2.4.0. The existing manual integration workflow

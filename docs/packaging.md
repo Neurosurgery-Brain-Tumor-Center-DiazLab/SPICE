@@ -37,8 +37,12 @@ shims are needed by the documented Python entry points.
 
 `spice_lineage/VERSION` supplies both build metadata and runtime version.
 When changing it, update the compatibility `VERSION` and `CITATION.cff` in the
-same change. Source and installed checks enforce agreement. License and citation
-files ship in wheel `.dist-info/licenses/` and at the sdist root.
+same change. Source and installed checks enforce agreement. The license ships
+in wheel `.dist-info/licenses/` and at the sdist root; `CITATION.cff` ships at
+the sdist root. The sdist also includes the repository-local wiki and release
+notes so README links resolve in the extracted source. Development checks and
+committed synthetic fixtures are intentional sdist contents, excluded from
+the installed wheel.
 
 The build metadata follows the
 [setuptools pyproject configuration](https://setuptools.pypa.io/en/latest/userguide/pyproject_config.html)
