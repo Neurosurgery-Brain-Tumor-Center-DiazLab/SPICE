@@ -110,9 +110,11 @@ The existing manual-only integration workflow retains its real scientific job
 and adds an independent Galaxy job. Only named text/report artifacts are retained.
 Normal required CI remains **Phase 1 required checks** and does not launch Galaxy.
 The source archive includes the small wrappers/workflow/tests/tutorial; the wheel
-includes the tested serialization fix. The Conda source pin identifies that
-exact production payload: source commit `d0570d923d7880139a3f4c0a7a2b2e7ce65bc307`,
+includes the tested serialization fix. That historical Conda validation used
+source commit `d0570d923d7880139a3f4c0a7a2b2e7ce65bc307`,
 archive SHA-256 `47ab47321d96bb09c5c2089a0155a029e415610929fef43aa8522f51d6fb703b`.
+The current recipe uses the released immutable `v0.2.0` tag and finalized archive
+checksum; see [distribution guidance](distribution.md).
 The complete fixed installed-wheel integration passed (155.52 seconds, zero
 skips), including exact labeled/unlabeled seeded ancestry equivalence for both
 Newick and NEXUS. Required source checks pass with the new R regressions.

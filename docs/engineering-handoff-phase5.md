@@ -26,9 +26,11 @@ The package-named recipe directory supports later Bioconda submission.
 Its interpreted Python/R payload is architecture independent; Phase 5's tested
 runtime platform is Linux x86_64. No additional platform is claimed.
 
-The recipe uses the exact Phase 4 commit archive, not a moving branch or fake
-release. Source archive SHA-256:
+The original Phase 5 validation used the exact Phase 4 commit archive.
+That historical source archive had SHA-256:
 0102b4896cdb8bcaa4a1bcda22cf373d195b462863c01c0d8408b74c2a00257f.
+The current recipe uses the released immutable `v0.2.0` tag and finalized archive
+checksum; see [distribution guidance](distribution.md).
 The Conda artifact payload is compared byte-for-byte by SHA-256 with all
 production Python files, the version file and all seven R resources.
 No production Python or R file changed. Scientific algorithms, default
