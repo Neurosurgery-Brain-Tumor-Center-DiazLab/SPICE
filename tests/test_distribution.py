@@ -26,7 +26,9 @@ class DistributionTests(unittest.TestCase):
         self.assertIn("noarch: python", recipe)
         self.assertIn("number: 0", recipe)
         self.assertRegex(recipe, r"sha256: [0-9a-f]{64}\n")
-        self.assertIn("/archive/" + distribution.SOURCE_REVISION + ".tar.gz", recipe)
+        self.assertIn(
+            "  url: https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE"
+            "/archive/refs/tags/v" + version + ".tar.gz\n", recipe)
         run_section = recipe.split("  run:\n", 1)[1].split("\ntest:", 1)[0]
         dependencies = {line.strip().split()[1] for line in run_section.splitlines() if line.strip()}
         r_names = set()

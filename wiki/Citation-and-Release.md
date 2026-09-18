@@ -26,7 +26,7 @@ Software-note/manuscript authorship, corresponding contact and authorization for
 
 ## Release and separate publication channels
 
-The [v0.2.0 GitHub Release](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/releases/tag/v0.2.0) is published. The immutable `v0.2.0` tag points to `5ebc4aec5df7df6c2e9cdb60c1259a2898e3e19f` and must not be altered. The public Bioconda recipe has not yet been finalized or published. In that separate publication step, it must use the v0.2.0 tag archive and its calculated SHA-256; the current immutable staging source remains for local validation until then.
+The [v0.2.0 GitHub Release](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/releases/tag/v0.2.0) is published. The immutable `v0.2.0` tag points to `5ebc4aec5df7df6c2e9cdb60c1259a2898e3e19f` and must not be altered. The Bioconda recipe now uses that released tag archive with its finalized SHA-256 and is ready for external submission to `bioconda/bioconda-recipes`. Bioconda acceptance and publication have not occurred; see [distribution guidance](../docs/distribution.md).
 
 ## License
 

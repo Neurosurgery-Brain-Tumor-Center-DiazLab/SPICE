@@ -3,8 +3,8 @@ package:
   version: "0.2.0"
 
 source:
-  url: https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/archive/d0570d923d7880139a3f4c0a7a2b2e7ce65bc307.tar.gz
-  sha256: 47ab47321d96bb09c5c2089a0155a029e415610929fef43aa8522f51d6fb703b
+  url: https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/archive/refs/tags/v0.2.0.tar.gz
+  sha256: 48d67b1e5300203d5ce953f2bea25b958772d1887ed8ad1b83f31ce6ced71236
 
 build:
   number: 0
@@ -67,5 +67,3 @@ about:
     SPICE performs somatic SNV filtering, IQ-TREE lineage inference,
     clone classification, ancestral-state inference and plasticity analysis.
     BayesTraits V4.1.3 is externally supplied and is not redistributed.
-    This staging recipe is for local and CI validation only.
-    The v0.2.0 tag exists; finalize the public source and checksum in a separate publication step.

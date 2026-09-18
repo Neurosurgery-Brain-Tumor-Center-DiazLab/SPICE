@@ -1,11 +1,13 @@
 # spice-lineage recipe
 
-Classic Bioconda/conda-build recipe, version 0.2.0, build 0, staged only.
+Classic Bioconda/conda-build recipe, version 0.2.0, build 0, ready for external
+submission to bioconda/bioconda-recipes. Bioconda acceptance and publication
+have not occurred.
 
 Source archive:
-https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/archive/d0570d923d7880139a3f4c0a7a2b2e7ce65bc307.tar.gz
+https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/archive/refs/tags/v0.2.0.tar.gz
 
-SHA-256: 47ab47321d96bb09c5c2089a0155a029e415610929fef43aa8522f51d6fb703b
+SHA-256: 48d67b1e5300203d5ce953f2bea25b958772d1887ed8ad1b83f31ce6ced71236
 
 Only Python modules, the version file, seven R resources, distribution metadata,
 license and the Conda-generated console entry point are installed. The package
@@ -16,8 +18,9 @@ only. No native Windows or macOS support is claimed.
 BayesTraits is neither a dependency nor a build download. Users supply the
 official V4.1.3 executable through --bayestraits_bin, BAYESTRAITS_BIN or PATH.
 
-The `v0.2.0` tag now exists. In a separate Bioconda publication step, replace
-this older staging source in the public recipe with that tag archive and its
-calculated SHA-256. Preserve the current valid source/checksum until then. Confirm a
-recipe maintainer and submission authorization separately. Do not upload the
-staging build. See [distribution guidance](../../../docs/distribution.md).
+The source is the released immutable `v0.2.0` tag, dereferencing to
+`5ebc4aec5df7df6c2e9cdb60c1259a2898e3e19f`. The archive checksum above was
+calculated from that tag archive and is finalized. Keep the tag unchanged.
+Confirm a consenting recipe maintainer and submission authorization separately;
+no package has been published. See
+[distribution guidance](../../../docs/distribution.md).

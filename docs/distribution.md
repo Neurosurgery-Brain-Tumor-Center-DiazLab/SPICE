@@ -15,19 +15,21 @@ The recipe builds the existing Python distribution with pip, with dependency
 installation, build isolation and pip caching disabled. Conda supplies the
 actual build requirements: Python, pip and setuptools >=77.
 
-The immutable staging source is the tested serialization-fix commit:
-d0570d923d7880139a3f4c0a7a2b2e7ce65bc307. The commit-addressed GitHub archive
-has SHA-256
-47ab47321d96bb09c5c2089a0155a029e415610929fef43aa8522f51d6fb703b.
-No moving branch, invented tag or placeholder hash is used. A commit archive
-also avoids the Bioconda lint restriction on git_url/git_rev.
-This source predates the release-candidate metadata and is intentionally
-retained for staging validation. The `v0.2.0` tag now exists; the public
-Bioconda recipe still needs a separately authorized update to that tag archive
-and its calculated SHA-256. Do not substitute an invented tag URL or placeholder
-checksum.
+The recipe targets the released immutable `v0.2.0` tag at commit
+`5ebc4aec5df7df6c2e9cdb60c1259a2898e3e19f`, using this exact archive:
 
-The staged source includes the minimal BayesTraits serialization fix for
+https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/archive/refs/tags/v0.2.0.tar.gz
+
+Its finalized SHA-256 is
+`48d67b1e5300203d5ce953f2bea25b958772d1887ed8ad1b83f31ce6ced71236`.
+The downloaded archive matches the released tag, including both version files
+and the Python/R source; it does not include post-release DOI documentation
+commits from main. The annotated tag object is
+`b58b44c4630287ef36314a6f56de690ea00ec8b6` and must remain unchanged.
+The recipe is ready for external submission to **bioconda/bioconda-recipes**;
+Bioconda acceptance and publication have **not** occurred.
+
+The released source includes the minimal BayesTraits serialization fix for
 IQ-TREE internal support labels. Only the temporary subprocess NEXUS copy omits
 that metadata; original trees/supports, fingerprints, node identities and
 scientific calculations remain unchanged. Exact seeded ancestry equivalence
@@ -187,9 +189,9 @@ After opening the lab-repository PR:
 
 ~~~bash
 gh workflow run integration.yml --repo Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE \
-  --ref codex/release-v0.2.0-rc
+  --ref codex/finalize-bioconda-v0.2.0
 gh workflow run distribution.yml --repo Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE \
-  --ref codex/release-v0.2.0-rc
+  --ref codex/finalize-bioconda-v0.2.0
 ~~~
 
 GitHub may require a newly introduced manual workflow to be registered on the
@@ -209,11 +211,11 @@ that run; they are not hard-coded into the recipe.
 
 1. SPICE `v0.2.0` has been tagged and released; preserve the immutable tag.
    Obtain separate maintainer authorization for Bioconda publication.
-2. In that separate publication step, update the public recipe to the v0.2.0
-   tag archive and its calculated SHA-256. Never invent a tag or reuse the
-   older staging source as the public release.
-3. Confirm the software name remains available, the license/source and all runtime
-   constraints are appropriate, and a consenting recipe-maintainer handle.
+2. The recipe's released `v0.2.0` tag archive and calculated SHA-256 are finalized
+   above. Preserve both when preparing the external submission.
+3. Keep the package name `spice-lineage`; the existing Bioconda package `spice`
+   is unrelated. Confirm name availability, license/source and runtime constraints,
+   and a consenting recipe-maintainer handle.
 4. In a separately authorized Bioconda contribution, copy the package-named
    recipe directory into recipes/spice-lineage. Run the then-current
    bioconda-utils lint/build/container tests and resolve reviewer feedback.
