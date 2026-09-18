@@ -4,7 +4,7 @@
 
 ## Current status
 
-Current software version: **0.2.0**. The Python distribution is `spice-lineage`; its executable is `spice`. A version string or a successful integration test does not itself establish a release or public distribution.
+SPICE **v0.2.0 has been tagged, released and archived on Zenodo**. The Python distribution is `spice-lineage`; its executable is `spice`.
 
 Bioconda, BioContainer, Galaxy Tool Shed, GTN, PyPI and other public distribution channels are published separately and should only be documented as available after verification. The repository supplies Conda/OCI staging definitions, native Galaxy tools/workflows and a GTN-style tutorial draft. The pinned IUC IQ-TREE dependency is separate from publication of SPICE itself.
 
@@ -19,11 +19,14 @@ Follow [CITATION.cff](../CITATION.cff), which records version 0.2.0 and the main
 
 Record the exact SPICE version/commit, relevant dependency versions and analysis settings with your methods. Preserve runtime records and source hashes, especially when an installed package runs outside a Git checkout. See [Outputs and provenance](Outputs-and-Provenance.md).
 
-No DOI or release date is recorded in the current citation metadata. Software-note/manuscript authorship, corresponding contact, archival DOI and authorization for each publication destination remain human maintainer decisions.
+- **v0.2.0 version-specific DOI:** [10.5281/zenodo.22821665](https://doi.org/10.5281/zenodo.22821665). Use this DOI for the software note and reproducible citation of the exact v0.2.0 software artifact; it is recorded in `CITATION.cff`.
+- **Concept/repository DOI:** [10.5281/zenodo.22821664](https://doi.org/10.5281/zenodo.22821664). This DOI covers the SPICE release series and is not a substitute for the version-specific DOI when citing v0.2.0.
 
-## Release review and publication
+Software-note/manuscript authorship, corresponding contact and authorization for each publication destination remain human maintainer decisions.
 
-The release-candidate PR must be reviewed and merged by a maintainer before a separate tagging step is authorized. A release candidate is not frozen by passing validation alone. After the actual `v0.2.0` tag exists, the public Bioconda recipe must use that tag archive and its calculated SHA-256; the current immutable staging source remains for local validation until then.
+## Release and separate publication channels
+
+The [v0.2.0 GitHub Release](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/releases/tag/v0.2.0) is published. The immutable `v0.2.0` tag points to `5ebc4aec5df7df6c2e9cdb60c1259a2898e3e19f` and must not be altered. The public Bioconda recipe has not yet been finalized or published. In that separate publication step, it must use the v0.2.0 tag archive and its calculated SHA-256; the current immutable staging source remains for local validation until then.
 
 ## License
 

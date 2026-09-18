@@ -30,7 +30,8 @@ The release action is to promote the validated Conda dependency recipe into
 [user-facing Installation](../wiki/Installation.md), replacing the unpinned R
 route as the primary procedure. This record summarizes the supplied independent
 cold-start evidence; it does not claim that this documentation branch reran the
-scientific workflow. Version 0.2.0 remains unreleased.
+scientific workflow. Version 0.2.0 was unreleased at the time of this validation;
+see the current [citation and release status](../wiki/Citation-and-Release.md).
 
 ## Starting gate
 
@@ -181,10 +182,11 @@ gate to pass. No local WSL1 Galaxy functional pass is claimed.
 
 ## Publication boundary
 
-Version stays **0.2.0 unreleased**. Tool Shed `.shed.yml` is staging metadata,
+At the Phase 6 handoff, version **0.2.0 was unreleased**.
+Tool Shed `.shed.yml` is staging metadata,
 with no invented owner. The GTN-style tutorial is a repository-local draft.
-No Tool Shed/GTN/Bioconda/PyPI/OCI publication, release/tag or upstream PR is
-created. The Phase 6 lab PR remains for review, not merging by this task.
+No Tool Shed/GTN/Bioconda/PyPI/OCI publication, release/tag or upstream PR was
+created by Phase 6. The Phase 6 lab PR was left for maintainer review and merging.
 
 The exact separate publication sequence is in [the Galaxy guide](galaxy.md):
 authorize/finalize the release and immutable source; publish approved package

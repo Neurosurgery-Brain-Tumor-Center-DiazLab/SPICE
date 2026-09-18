@@ -124,9 +124,13 @@ this PR to bypass that restriction.
 
 ## Release and handoff
 
-Version remains 0.2.0 unreleased. No public package/image was published, no
-GitHub release/tag was created, and no external Bioconda PR was opened.
+At the Phase 5 handoff, version 0.2.0 was unreleased. No public package/image
+was published, no GitHub release/tag was created, and no external Bioconda PR
+was opened during that phase.
 Galaxy/Planemo/Phase 6 has not started. Review the lab-repository Phase 5 PR,
 finish all hosted gates, then separately authorize any publication or Phase 6.
 The exact local build/install/container commands and eventual Bioconda release
 checklist are in [distribution.md](distribution.md).
+
+SPICE v0.2.0 has since been released and archived; see the current
+[citation and release status](../wiki/Citation-and-Release.md).

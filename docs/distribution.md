@@ -22,9 +22,10 @@ has SHA-256
 No moving branch, invented tag or placeholder hash is used. A commit archive
 also avoids the Bioconda lint restriction on git_url/git_rev.
 This source predates the release-candidate metadata and is intentionally
-retained for staging validation. After the actual `v0.2.0` tag exists, change
-the public Bioconda recipe to its tag archive and calculate the real archive
-SHA-256. Do not substitute an invented tag URL or placeholder checksum.
+retained for staging validation. The `v0.2.0` tag now exists; the public
+Bioconda recipe still needs a separately authorized update to that tag archive
+and its calculated SHA-256. Do not substitute an invented tag URL or placeholder
+checksum.
 
 The staged source includes the minimal BayesTraits serialization fix for
 IQ-TREE internal support labels. Only the temporary subprocess NEXUS copy omits
@@ -206,12 +207,11 @@ that run; they are not hard-coded into the recipe.
 
 ## Eventual Bioconda submission (separate authorization)
 
-1. Review and merge the release-candidate PR only after required source/package
-   CI and both manual workflows are green. Obtain separate maintainer
-   authorization for tagging and publication.
-2. After `v0.2.0` is tagged, update the public recipe to the actual tag archive
-   and its calculated SHA-256. Never invent a tag or reuse the older staging
-   source as the public release.
+1. SPICE `v0.2.0` has been tagged and released; preserve the immutable tag.
+   Obtain separate maintainer authorization for Bioconda publication.
+2. In that separate publication step, update the public recipe to the v0.2.0
+   tag archive and its calculated SHA-256. Never invent a tag or reuse the
+   older staging source as the public release.
 3. Confirm the software name remains available, the license/source and all runtime
    constraints are appropriate, and a consenting recipe-maintainer handle.
 4. In a separately authorized Bioconda contribution, copy the package-named
