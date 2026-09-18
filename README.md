@@ -77,6 +77,6 @@ Detailed engineering records remain under [docs/](docs/), including [packaging](
 
 Analysis commands record settings, software versions, package source hashes, executable paths/hashes and completion status in runtime JSON. Git revision/status are available only for a verified source checkout; installed packages still retain source hashes. Preserve inputs, tree/state identity, diagnostics and logs alongside results. Synthetic CI fixtures validate software operation, not biological accuracy.
 
-**Current software version: 0.2.0.** See the [release notes](docs/releases/v0.2.0.md). Bioconda, BioContainer, Galaxy Tool Shed, GTN, PyPI and other public distribution channels are published separately and should only be documented as available after verification. The code is licensed under [GPL-3.0-only](LICENSE). Cite Bohyeon Yu and Aaron Diaz and the software version and commit used, following [CITATION.cff](CITATION.cff).
+**SPICE v0.2.0 has been released and archived on Zenodo:** [v0.2.0 archival DOI: 10.5281/zenodo.22821665](https://doi.org/10.5281/zenodo.22821665). See the [release notes](docs/releases/v0.2.0.md). Bioconda, BioContainer, Galaxy Tool Shed, GTN, PyPI and other public distribution channels are published separately and should only be documented as available after verification. The code is licensed under [GPL-3.0-only](LICENSE). Cite Bohyeon Yu and Aaron Diaz and the software version, archival DOI and commit used, following [CITATION.cff](CITATION.cff).
 
 Contact: Bohyeon Yu, [bohyeon.yu@ucsf.edu](mailto:bohyeon.yu@ucsf.edu).

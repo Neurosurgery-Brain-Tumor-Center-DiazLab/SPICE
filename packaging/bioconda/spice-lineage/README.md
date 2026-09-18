@@ -16,8 +16,8 @@ only. No native Windows or macOS support is claimed.
 BayesTraits is neither a dependency nor a build download. Users supply the
 official V4.1.3 executable through --bayestraits_bin, BAYESTRAITS_BIN or PATH.
 
-After the maintainer-authorized `v0.2.0` tag exists, replace this older staging
-source in the public recipe with the actual tag archive and its calculated
-SHA-256. Preserve the current valid source/checksum until then. Confirm a
+The `v0.2.0` tag now exists. In a separate Bioconda publication step, replace
+this older staging source in the public recipe with that tag archive and its
+calculated SHA-256. Preserve the current valid source/checksum until then. Confirm a
 recipe maintainer and submission authorization separately. Do not upload the
 staging build. See [distribution guidance](../../../docs/distribution.md).

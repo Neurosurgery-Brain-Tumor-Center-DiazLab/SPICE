@@ -92,8 +92,8 @@
   Verify official BayesTraits archive/binary checksums, remove downloaded
   executables after testing and retain only text evidence.
 - Public distribution channels require separate publication and verification.
-  After the actual `v0.2.0` tag exists, finalize the public Bioconda recipe using
-  its real tag archive and calculated SHA-256.
+  The `v0.2.0` tag now exists; finalizing the public Bioconda recipe with its
+  tag archive and calculated SHA-256 remains a separate publication step.
 
 ### Galaxy integration
 
