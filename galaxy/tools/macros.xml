@@ -63,6 +63,7 @@ unset PYTHONPATH PYTHONHOME && PYTHONNOUSERSITE=1 python '$__tool_directory__/ru
                 author = {Yu, Bohyeon and Diaz, Aaron},
                 title = {SPICE: Single-cell Plasticity Inference and Clonal Evolution},
                 url = {https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE},
+                doi = {10.5281/zenodo.22821665},
                 note = {Software version 0.2.0}
             }</citation>
         </citations>

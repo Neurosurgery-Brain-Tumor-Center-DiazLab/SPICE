@@ -4,6 +4,8 @@
 
 SPICE provides five staged native Galaxy tools for Galaxy 25.0+: Filter, Clones, Ancestry, Plasticity and Summarize, each versioned `0.2.0+galaxy0`. They invoke the installed SPICE CLI. Tool Shed and GTN publication remain separate maintainer decisions; this repository does not establish a public SPICE installation on a Galaxy server.
 
+SPICE **v0.2.0** is released ([Zenodo DOI](https://doi.org/10.5281/zenodo.22821665)). The wrappers are prepared for the intended Tool Shed repository `diazlab/spice_lineage`; public Tool Shed deployment and GTN publication are still pending.
+
 ## Workflow and version pin
 
 ```text
@@ -34,9 +36,9 @@ Summarize uses each plasticity-test collection identifier as the clone ID in its
 
 ## BayesTraits and installation
 
-A Galaxy administrator must supply BayesTraits on the job execution host through `BAYESTRAITS_BIN` or PATH, including appropriate runtime libraries and job/container propagation. There is no executable-upload parameter. BayesTraits is not redistributed with SPICE.
+A Galaxy administrator must supply externally acquired BayesTraits V4.1.3 on the job execution host through `BAYESTRAITS_BIN` or PATH, including appropriate runtime libraries and job/container propagation. There is no executable-upload parameter. BayesTraits is not redistributed with SPICE.
 
-The current validation setup uses the unpublished local Conda package. Follow the existing [Galaxy administration and validation guide](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/galaxy.md) for package channels, exact server/toolchain pins and job configuration. The [workflow files](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/tree/main/galaxy/workflows) remain in the main repository.
+The Galaxy Conda requirement is `spice-lineage=0.2.0`. [Bioconda PR #69381](https://github.com/bioconda/bioconda-recipes/pull/69381) is open and under review; final Tool Shed deployment requires verified public package availability after upstream acceptance and publication. The current validation setup uses a local Conda build. Follow the existing [Galaxy administration and validation guide](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/galaxy.md) for package channels, exact server/toolchain pins and job configuration. The [workflow files](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/tree/main/galaxy/workflows) remain in the main repository.
 
 ## Test settings versus study analyses
 
