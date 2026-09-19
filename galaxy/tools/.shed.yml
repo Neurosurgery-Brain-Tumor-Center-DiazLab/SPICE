@@ -1,13 +1,17 @@
 name: spice_lineage
+owner: diazlab
 description: Single-cell Plasticity Inference and Clonal Evolution
 long_description: >-
   Five SPICE tools for standard-input filtering, supported-tree clone discovery,
   ancestral-state inference, plasticity, and clone-level BH summaries. Clone
-  collections compose with the pinned IUC IQ-TREE 2.4.0 tool. Current software
-  version: 0.2.0. Local Conda testing is required until Bioconda publication.
-  BayesTraits is an external administrator-provided dependency.
+  collections compose with the pinned IUC IQ-TREE 2.4.0 tool. SPICE software
+  version 0.2.0 is released and these Galaxy wrappers are prepared for Tool Shed
+  publication; public Tool Shed deployment is still pending. The Galaxy Conda
+  requirement spice-lineage=0.2.0 is expected from Bioconda once PR #69381 is
+  accepted and published; public availability must be verified before deployment.
+  BayesTraits V4.1.3 remains external and administrator-provided; it is not
+  redistributed.
 categories:
   - Phylogenetics
 homepage_url: https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE
 remote_repository_url: https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/tree/main/galaxy/tools
-# No Tool Shed owner has been established. This is staging only; do not upload.

@@ -1,4 +1,4 @@
-# Galaxy integration (Phase 6 staging)
+# Galaxy integration
 
 SPICE 0.2.0 is exposed through five native Galaxy tools, all versioned
 `0.2.0+galaxy0` with profile `25.0`. This is an orchestration layer around the
@@ -152,19 +152,26 @@ adequacy for real data. Production defaults are 3 chains, 1,000,000 iterations,
 200,000 burn-in, sampling every 1,000 and 1,000 permutations; assess diagnostics
 and scientific suitability for each study.
 
-## Staging and later publication
+## Tool Shed readiness and later publication
 
-`galaxy/tools/.shed.yml` defines `spice_lineage` with Phylogenetics metadata.
-A Tool Shed owner remains unset until maintainers establish one. Linting this
-file does not publish it. The tutorial is a repository-local GTN-style draft,
-not an official GTN contribution. No Tool Shed/GTN/Bioconda/PyPI/container upload
-or release/tag is part of Phase 6.
+`galaxy/tools/.shed.yml` defines `spice_lineage` under the intended Tool Shed
+owner `diazlab`, with Phylogenetics metadata. SPICE **v0.2.0** is released with
+version-specific DOI [10.5281/zenodo.22821665](https://doi.org/10.5281/zenodo.22821665).
+The Galaxy wrappers are prepared for publication, but public Tool Shed deployment
+has not occurred. Metadata, linting and local tarball generation do not publish
+the tools. The tutorial remains a repository-local GTN-style draft, not an
+official GTN contribution.
 
-After review and separate maintainer authorization: finalize the SPICE release
-and immutable source archive/checksums; publish the approved Python distribution
-and submit the recipe to Bioconda; validate the public package and corresponding
-BioContainer; establish a Tool Shed owner and retest wrappers against public
-Bioconda plus administrator-provided BayesTraits; submit/publish the reviewed
+The Galaxy requirement remains `spice-lineage=0.2.0`.
+[Bioconda PR #69381](https://github.com/bioconda/bioconda-recipes/pull/69381) is
+open and under review; public package availability must be verified after
+upstream acceptance and publication. Final Tool Shed deployment is gated on
+that verification. BayesTraits V4.1.3 remains external, administrator-provided
+and not redistributed.
+
+After review and separate maintainer authorization: validate the public Bioconda
+package and corresponding BioContainer; retest wrappers against public Bioconda
+plus administrator-provided BayesTraits; submit/publish the reviewed
 wrappers, pin the resulting tool IDs/revisions in the workflow, and rerun the
 complete workflow on the target server; then adapt and submit the tutorial to
 GTN through its review process. Publication requires separate decisions and
