@@ -1,0 +1,403 @@
+# SPICE v0.2.0 public distribution and Galaxy prepublication validation
+
+Date: **2026-10-19, America/Los_Angeles** (evidence timestamps use UTC).
+Evidence root: `/tmp/spice-public-validation-20261019` on this Linux host.
+No publication command was executed. This report does not authorize publication.
+
+## Release and branch identity
+
+- Repository: https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE
+- Feature branch: `codex/public-bioconda-galaxy-v0.2.0`.
+- Base/current remote main at validation: `bddd180bc1e201d648dd7093d55544bdebe6d0c4`.
+- Initial clean local main was `495bfdb9b8d47a9fa7a1a65dd5477ecc95dd9969`;
+  remote main was fetched before creating the feature branch.
+- Immutable annotated `v0.2.0` tag object: `b58b44c4630287ef36314a6f56de690ea00ec8b6`.
+- Dereferenced release commit: `5ebc4aec5df7df6c2e9cdb60c1259a2898e3e19f`.
+- Release archive SHA-256:
+  `48d67b1e5300203d5ce953f2bea25b958772d1887ed8ad1b83f31ce6ced71236`.
+- [Bioconda PR #69381](https://github.com/bioconda/bioconda-recipes/pull/69381)
+  merged at `2026-10-19T03:19:10Z` (October 18 Pacific), merge commit
+  `10d7cc5d1b8a41e757c7e51a18b843627440d24d`.
+
+`git-state.json`, `release-tag.response`, `bioconda-pr.json` and
+`merged-recipe.response` retain the independent remote checks. The downloaded
+release archive checksum matches the merged upstream recipe. The recipe itself
+was not edited.
+
+## Public Bioconda — PASS
+
+Indexed **YES**; fresh installation **PASS**; smoke/functional checks **PASS**,
+zero skips. This is an independently downloaded public package, not the local
+build used in earlier Galaxy validation.
+
+| Identity | Verified value |
+| --- | --- |
+| Name/version | `spice-lineage=0.2.0` |
+| Build / build number | `pyhdfd78af_0` / `0` |
+| Subdirectory / type | `noarch` / Python |
+| Filename | `spice-lineage-0.2.0-pyhdfd78af_0.conda` |
+| Public artifact | [spice-lineage-0.2.0-pyhdfd78af_0.conda](https://conda.anaconda.org/bioconda/noarch/spice-lineage-0.2.0-pyhdfd78af_0.conda) |
+| SHA-256 | `42c1adce162effda9eb151c3f7ba87bd0a0dd23111f8d6f21f16f10e7bd42974` |
+| Anaconda upload time | `2026-10-19 03:21:37.399000+00:00` |
+
+The [Anaconda API](https://api.anaconda.org/package/bioconda/spice-lineage),
+[official noarch index](https://conda.anaconda.org/bioconda/noarch/repodata.json.bz2),
+independent artifact download, empty-cache Conda download and actual installed
+`conda-meta` record agree on package identity and SHA-256.
+
+Installation used Conda **26.7.2**, Linux x86_64 on WSL, a new prefix
+`public-runtime`, new HOME and empty `package-cache` under the evidence root:
+
+```bash
+conda create --yes --prefix /tmp/spice-public-validation-20261019/public-runtime \
+  --override-channels --strict-channel-priority \
+  -c conda-forge -c bioconda 'spice-lineage=0.2.0'
+```
+
+`install-command.json` records the exact absolute executable, complete isolated
+environment, OS, timestamp, `cache_initial_entries: []` and
+`prefix_existed: false`. `install.log` and `install-exit.json` record completion.
+All **201** installed package records come from public conda-forge or bioconda;
+`public-runtime-explicit.log` is the complete URL/SHA-256 package export.
+No Python version override or scientific dependency change was made to obtain
+this solve. The actual resolved dependency versions include:
+
+| Package | Version | Build |
+| --- | --- | --- |
+| python | 3.14.8 | hcd007b5_101_cp314 |
+| pandas | 2.3.3 | py314ha0b5721_2 |
+| numpy | 2.5.4 | py314hd3a7d6b_0 |
+| r-base | 4.3.3 | hc28aa72_21 |
+| r-ape | 5.8_1 | r43h3704496_1 |
+| r-coda | 0.19_4.1 | r43hc72bb7e_1 |
+| r-janitor | 2.2.1 | r43hc72bb7e_0 |
+| r-posterior | 1.6.1 | r43hc72bb7e_0 |
+| r-dplyr | 1.1.4 | r43h0d4f4ea_1 |
+| r-progress | 1.2.3 | r43hc72bb7e_1 |
+| r-phangorn | 2.12.1 | r43h9124c8a_2 |
+| r-phytools | 2.5_2 | r43hc72bb7e_0 |
+| r-ggplot2 | 3.5.2 | r43hc72bb7e_0 |
+| r-ggsci | 3.2.0 | r43hc72bb7e_1 |
+| bioconductor-ggtree | 3.10.0 | r43hdfd78af_0 |
+| iqtree | 2.4.0 | h503566f_0 |
+
+The independent smoke driver `phase1.py` and its exact commands are retained.
+It runs outside Git with a clean environment, PYTHONPATH absent and Python user
+site disabled. `phase1-result.json` records these successful checks:
+
+- Installed console version/help and help for all seven subcommands:
+  `import-monopogen`, `filter`, `phylogeny`, `clones`, `ancestry`, `plasticity`,
+  `summarize`; installed Python import and pandas/numpy imports.
+- All seven R resources and all eleven required R namespaces; R **4.3.3**.
+- Actual `iqtree2 --version`: **2.4.0**, matching the installed package record.
+- Every installed Python/R/version payload hash equals the immutable release.
+  The downloaded Conda payload also passes the existing package allowlist,
+  console-entry-point and license checks against that release.
+- The release's own functional checks: standard-input filtering, supported-tree
+  clone discovery, real IQ-TREE phylogeny, three-clone partition, tree exports,
+  standalone/combined clone equivalence, unchanged inputs and runtime source/
+  executable provenance. Negative ancestry testing fails clearly without
+  BayesTraits and does not attempt inference.
+- BayesTraits is absent from the Conda package/environment; it remains external.
+
+Detailed evidence: `phase1-artifact/artifact.json`, retained API/index/archive,
+`phase1-artifact/inspection/package-files.json`, `phase1-installed/`,
+`public-release-checks.log`, `release-checks/output with spaces/`, and
+`python-dependencies.log`. Historical source validation used Python 3.11; this
+independent public solve used Python 3.14.8, with no claim about other platforms.
+
+## Public BioContainer — registry identity verified; execution unvalidated
+
+The follow-up at **2026-10-20T02:57:29Z** established that the public image is
+available. The Quay repository, tag, search and registry-v2 endpoints returned
+HTTP 200. This supersedes the earlier unsuccessful anonymous discovery checks;
+it does not imply that the image was created between those observations.
+
+| Identity | Verified value |
+| --- | --- |
+| Repository | `quay.io/biocontainers/spice-lineage` (public) |
+| Exact tag | `0.2.0--pyhdfd78af_0` |
+| Digest | `sha256:5792ced8951d88953a88fe45134ee46ce8549b273540162b1339c2252f5d5641` |
+| Platform | `linux/amd64` |
+| Registry-reported tag timestamp | `Mon, 19 Oct 2026 03:22:13 -0000` |
+| Layers / compressed bytes | 3 / 704,410,017 |
+| Full image pull / execution | NOT RUN / NOT RUN |
+
+The [public tag API](https://quay.io/api/v1/repository/biocontainers/spice-lineage/tag/?limit=100&onlyActiveTags=true)
+and [registry manifest](https://quay.io/v2/biocontainers/spice-lineage/manifests/0.2.0--pyhdfd78af_0)
+agree. Independently hashing the downloaded manifest bytes reproduces both the
+API digest and the registry `Docker-Content-Digest` header. The referenced image
+configuration was also downloaded and hash verified:
+`sha256:2752bd12dc09118114e13a98df4f508e716770dc91ff55cff1e831ba78e82b45`.
+
+No Docker/Podman runtime or Docker Desktop CLI is installed on this Windows/WSL
+host, so the layers were not pulled and the image was not executed. Manifest
+verification is not a container runtime pass. No local image was built or
+substituted. BayesTraits V4.1.3 remains an external dependency; the container's
+installed payload and scientific executable versions have not been inspected.
+
+Earlier evidence is retained: the repository/tag API and registry token/tag
+requests returned HTTP 401, and Quay search returned an empty list, including
+at `2026-10-20T02:00:15Z`. Those responses could not distinguish a private image
+from a nonexistent one. The BioContainers TRS hostname still fails DNS on this
+host. Public `biocontainers/iqtree` was only a registry-access control; no IQ-TREE
+3 dependency was selected for SPICE.
+
+Current evidence is under `readiness-followup/`: `quay-*.json`,
+`public-image-manifest.json`, `public-image-config.json`, and
+`public-container-recheck.json`. Earlier `quay-*.response`, `quay-*.http.json`,
+`container-result.json` and `quay-final-*.json` are historical observations.
+Per the maintainer's follow-up, container execution is tracked as a **separate
+distribution limitation**, not a reason to change scientific code or negate
+the accepted Conda-backed Galaxy evidence.
+
+## Galaxy public-package validation
+
+The final hosted Ubuntu 24.04 public run **PASS** at commit
+`a3b29c584dd6abc059bab8d8ebe81b96d14a717a`:
+[run 39356162614](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/actions/runs/39356162614),
+completed `2026-10-20T02:04:27Z`. All **six wrapper cases** and the **one full
+workflow** succeeded with **zero skips**, in 439.26 seconds for the validation
+runner. The separate real IQ-TREE/BayesTraits integration job also passed.
+
+| Suite | Required cases | Successes | Failures | Skips |
+| --- | ---: | ---: | ---: | ---: |
+| Five SPICE wrappers (plasticity has two cases) | 6 | 6 | 0 | 0 |
+| Complete synthetic workflow | 1 | 1 | 0 | 0 |
+
+Galaxy itself created `public-conda/envs/__spice-lineage@0.2.0` using the fresh
+Conda root and initially empty package cache. After **both** suites, the actual
+installed records identified the official URL, build `pyhdfd78af_0` and SHA-256
+`42c1adce162effda9eb151c3f7ba87bd0a0dd23111f8d6f21f16f10e7bd42974`.
+All 201 dependencies had public conda-forge/bioconda origins; installed Python/R
+payload hashes matched the immutable release. Galaxy's downloaded cache archive
+also had that exact SHA-256. No SPICE package was preinstalled or cached before
+Galaxy ran.
+
+An independent audit of the test reports verified execution markers for **all
+six wrapper jobs and all nine SPICE jobs in the workflow**: executable, Python
+import and prefix point to that public environment; version is 0.2.0; jobs
+finished `ok` with exit 0. The workflow executed the pinned IUC IQ-TREE tool
+using actual IQ-TREE 2.4.0, DNA/JC/BIC, 1,000 SH-aLRT and ultrafast-bootstrap
+replicates, seed 12345 and one thread. Three clone identifiers, three ancestry
+jobs, three plasticity jobs, original-tree pairing and summary membership all
+passed. External BayesTraits V4.1.3 was used through the Galaxy job environment;
+its temporary copy was removed successfully.
+
+The hosted SPICE environment also resolved Python 3.14.8. Compared with the
+independent WSL installation, only the platform support packages differ:
+`kernel-headers_linux-64` 4.18.0 versus 6.12.0 and `sysroot_linux-64` 2.28 versus
+2.39. All scientific/runtime package versions and builds agree.
+
+Final evidence: `hosted-rerun-final.json`, `hosted-rerun-complete.log`,
+`hosted-final/spice-galaxy-text-evidence/{result,tools,workflow}.json`, both
+`*-public-install/` record directories, and
+`hosted-final/spice-galaxy-text-evidence/independent-provenance-audit.json`.
+The independent driver is `audit_hosted.py`; the comparison is
+`independent-final-hosted-audit.json`. Integration evidence is in
+`hosted-final/spice-integration-text-evidence/`.
+
+The earlier hosted run
+[39354962350](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/actions/runs/39354962350)
+at `458ab862f7a0c8326fcc2ea2adec9396d2e4626f` also passed all required tests.
+A log audit found directory registration repeatedly treating `macros.xml` as a
+standalone tool (134,935 failed load messages). Public mode now registers the
+five wrapper XML files explicitly; the final fresh rerun has **zero** such
+messages and zero tool-load errors. Its workflow log is 456,337 bytes, compared
+with 273,846,506 bytes previously. Local mode remains unchanged.
+
+The initial WSL1 attempt failed during input uploads before any SPICE job or
+public SPICE installation: Galaxy's hard-coded Celery `forkserver` could not
+reconstruct an AF_UNIX socket (`OSError: [Errno 22] Invalid argument`, then
+`EOFError`). It was stopped with SIGINT. Temporary BayesTraits cleanup succeeded.
+Its failure logs remain in `galaxy-public/`; no WSL workaround patched Galaxy.
+
+The existing local-package validation remains the default, including its local
+artifact checksum, payload and actual local Conda origin checks.
+`--package-source public` is a separate path; it rejects reused local
+`--distribution-result`, bootstraps an isolated Conda root/cache, resolves only
+`conda-forge,bioconda`, and checks actual Galaxy-installed records after each
+suite. The public artifact is independently checked against the official index
+and immutable source before execution. Its downloaded cache file must match
+as well. New tests reject wrong artifact identity, local dependency sources,
+installed-source drift, IQ-TREE/R drift, missing records, incomplete case counts
+and unsuccessful/skipped Galaxy cases.
+
+Pins are preserved: wrappers `0.2.0+galaxy0`, Galaxy profile `25.0`, Galaxy commit
+`ec10c792f94c6da0bc97b177f73be2a9287637dd` (`25.0.5.dev0`), Planemo `0.75.47`,
+IUC IQ-TREE changeset `e727e82945af`, tool `2.4.0+galaxy2`, scientific executable
+`2.4.0`, and external BayesTraits `V4.1.3`. Workflow scientific parameters and
+production defaults are unchanged. The existing reduced synthetic tests do not
+establish biological validity or recommended study settings.
+
+## Tool Shed preparation — local PASS; publication stopped
+
+Final `planemo lint`, `shed_lint`, `workflow_lint` and local `shed_build` all
+returned **0**. Evidence: `shed-review.json` and `review-*.log`.
+
+- Owner/repository: **diazlab/spice_lineage**; category **Phylogenetics**.
+  The public Test Tool Shed categories API confirms that category exists and
+  is not deleted (`310ff67d4caf6531`; `testshed-categories.json`).
+- Five wrapper IDs, versions and profiles lint successfully; six cases total.
+- Each wrapper includes the shared SPICE citation. DOI
+  [10.5281/zenodo.22821665](https://doi.org/10.5281/zenodo.22821665) independently
+  resolves to SPICE v0.2.0 by Bohyeon Yu and Aaron Diaz (`citation-metadata.json`).
+- Conda dependency remains `spice-lineage=0.2.0` in `macros.xml`. No legacy
+  `tool_dependencies.xml` is needed. IQ-TREE is a separate workflow dependency
+  pinned in `galaxy/workflows/tools.yml`, not an extra tool bundled in this shed.
+- BayesTraits licensing/acquisition and administrator job-environment requirements
+  are explicit in the README, macros/help and Galaxy administration guide.
+- Test and Main Tool Shed read-only queries returned **[]** for
+  `diazlab/spice_lineage`. Test `diazlab` repository enumeration also returned
+  **[]**. The final Test refresh at `2026-10-20T02:00:15Z`
+  remained empty (`testshed-final.json`). These establish no visible repository,
+  not account identity or ownership.
+- The signed-in Test account is **UNVERIFIED** because browser initialization
+  failed. Do not assume Main and Test account credentials are interchangeable.
+
+Reviewed archive:
+`/tmp/spice-public-validation-20261019/shed-review/galaxy/tools.tar.gz`
+
+SHA-256:
+`125a5180889a14186117a5e89235b8288da67e95abef3a0cb2d9804c952d19bc`
+
+Its **31 regular files** exactly match staged source bytes: five XML wrappers,
+`macros.xml`, `run_spice.py`, `README.rst`, and 23 synthetic-data/readme files.
+Every member path/size/hash is in `shed-archive-inspection.json`. No archive
+member is a symlink, native executable, dependency cache, credential/config
+secret or temporary download. `.shed.yml` remains external publication metadata,
+as expected for Planemo; the workflow is not bundled into the five-tool archive.
+
+The [proposed publication runbook](test-toolshed-publication.md) uses explicit
+Test Tool Shed URLs, separate initial-create versus existing-repository paths,
+the reviewed tarball, observed post-upload IDs/revision, a fresh Galaxy
+`shed_test` installation, public package provenance checks and the full workflow.
+Only help/local commands were exercised. No `shed_create`, `shed_upload`,
+`shed_update`, remote publish control or Tool Shed write API was executed.
+
+## Failures and recovery
+
+- The sandbox execution helper failed before starting commands. Host execution
+  was approved and used for Linux work. The browser still failed to initialize;
+  Test Tool Shed signed-in account identity remains unresolved.
+- The first focused unit invocation used the distribution-build toolchain,
+  which lacks pandas; two test modules could not import. Re-running with the
+  newly installed public runtime passed all **19** focused tests. This did not
+  require dependency-bound or scientific-code changes.
+- Initial archive staging at `shed-stage/tools` triggered shed lint's URL/path
+  heuristic. The configured source URL was correct. Staging at
+  `shed-review/galaxy/tools` preserved the repository layout and all final lint
+  checks passed without suppressing warnings or changing source metadata URLs.
+- WSL Galaxy failed before SPICE execution because of the upload forkserver
+  socket error; hosted full Linux execution resolved that environment blocker.
+- Both hosted Galaxy servers still logged missing optional visualization data
+  tables/`twobit.loc` and a data-manager watcher `None` path exception. These
+  did not prevent any required job or test from succeeding. No claim is made
+  that this minimal disposable Galaxy has all optional services configured.
+- The first hosted workflow log had repeated macro-as-tool load failures; the
+  explicit-wrapper registration fix and a second full hosted run resolved them.
+- The later registry recheck resolved anonymous image discovery and verified
+  its actual manifest digest. TRS DNS and the absence of a local container
+  runtime remain limitations; image execution is not claimed.
+
+The repository required runner `scripts/check_ci.py` also passed using the public
+runtime: `Python: discovered=54 run=54 skipped=0 failures=0 errors=0`. R QC tests
+and all CLI help/version checks passed. Full log: `required-checks.log`; exit
+record: `required-checks-exit.json`.
+
+## Change and publication boundaries
+
+Changed validation: `scripts/check_galaxy.py` adds the public choice while
+preserving local default; `scripts/check_public_distribution.py` checks public
+provenance/release payload; `tests/test_public_distribution.py` adds seven
+failure-gate regressions; `.github/workflows/integration.yml` adds a manual
+`package_source` choice (default `local`) and public text-evidence allowlist.
+
+Changed documentation/metadata: `README.md`, `docs/distribution.md`,
+`docs/galaxy.md`, `docs/integration-testing.md`, this report,
+`docs/test-toolshed-publication.md`, `galaxy/README.md`,
+`galaxy/tools/.shed.yml`, `galaxy/tools/README.rst`,
+`packaging/bioconda/README.md`, `packaging/bioconda/spice-lineage/README.md`,
+`wiki/Galaxy.md`, `wiki/Installation.md`. No wrapper scientific XML changed.
+
+The immutable tag, scientific Python/R payload, algorithms, QC thresholds,
+scientific defaults, workflow scientific settings, IUC revision, Bioconda
+recipe/public package, Zenodo record and both Tool Sheds were untouched.
+Temporary BayesTraits handling is reported with the Galaxy outcome above.
+The feature branch was initially pushed for isolated hosted validation. The
+maintainer subsequently requested a PR into main and a review of all 17 changed
+files. PR creation does not authorize a merge or a Tool Shed write. Main and
+the release tag were not updated.
+
+## Maintainer-requested readiness follow-up and 17-file review
+
+The maintainer accepted the public Bioconda/Galaxy results as technical evidence
+and explicitly retained the no-publication/no-merge boundary. The reviewed
+archive was rehashed at `2026-10-20T02:55:30Z` and remains exactly
+`125a5180889a14186117a5e89235b8288da67e95abef3a0cb2d9804c952d19bc`
+(`readiness-followup/archive-recheck.json`). No archive member was edited during
+this follow-up.
+
+Account verification is **BLOCKED / UNVERIFIED**. Two browser initialization
+attempts failed; the second reported `windows sandbox failed:
+helper_unknown_error: setup refresh had errors`. Neither Linux nor Windows has
+a configured `TEST_TOOL_SHED_API_KEY` or standard Planemo configuration.
+The unauthenticated Test `/api/users/current` request returns HTTP 403; the
+repository query still returns `[]`. Thus this session cannot attest that an
+authenticated user is `diazlab` or prove create/update permission for
+`spice_lineage`. An absent public repository is not permission evidence.
+Secure environment credential setup or working browser access has been
+requested. No key value, cookie, password or credential file was read, printed
+or committed. Evidence: `readiness-followup/testshed-*.json` and
+`readiness-followup/account-verification.json`.
+
+All 17 changed files were reviewed against current main. No blocking code
+finding was identified in the validation changes. Two wiki pages used
+repository-relative links that would resolve incorrectly when
+published in GitHub Wiki; those links now use explicit repository URLs.
+
+| File | Review result |
+| --- | --- |
+| `.github/workflows/integration.yml` | Manual-only source choice; local default and read-only permissions preserved; public evidence allowlist excludes binaries/caches. |
+| `scripts/check_galaxy.py` | Separate public root/cache and origin checks; original local build/payload/origin path preserved; six-case/one-workflow acceptance and all pins retained. |
+| `scripts/check_public_distribution.py` | Official API/index/download hashes agree; immutable release hash and payload checks; actual installed origins and IQ-TREE/R contracts enforced. |
+| `tests/test_public_distribution.py` | Seven meaningful negative/positive gates cover identity, origin, payload, versions, missing records and unsuccessful/incomplete cases. |
+| `README.md` | Bioconda availability claims match verified evidence; independent publication statuses retained. |
+| `docs/distribution.md` | Merged recipe/public availability updated; local build and OCI regression remain documented. |
+| `docs/galaxy.md` | Public invocation and isolation documented; validated pins and external BayesTraits retained. |
+| `docs/integration-testing.md` | Local default and separate public mode accurately distinguished. |
+| `docs/public-distribution-validation-2026-10-19.md` | Evidence, failures/recovery, current registry identity, account limitation and boundaries recorded. |
+| `docs/test-toolshed-publication.md` | Proposed commands are explicit Test-targeted, hash-gated and unexecuted; credentials come only from environment. |
+| `galaxy/README.md` | Public package status and external administrator dependency accurately stated. |
+| `galaxy/tools/.shed.yml` | `diazlab/spice_lineage`, category, source/homepage and citation context retained; no scientific requirement change. |
+| `galaxy/tools/README.rst` | Package availability, citation and external dependency documented; pending full container verification remains accurate. |
+| `packaging/bioconda/README.md` | Upstream merge recorded; local regression recipe unchanged. |
+| `packaging/bioconda/spice-lineage/README.md` | Immutable source/checksum and maintainer facts retained; no recipe edit. |
+| `wiki/Galaxy.md` | Public mode documented; repository links corrected for GitHub Wiki use. |
+| `wiki/Installation.md` | Exact public build installation shown; repository evidence link corrected; image identity distinguished from unvalidated execution. |
+
+The tested implementation is commit `a3b29c584dd6abc059bab8d8ebe81b96d14a717a`;
+subsequent report/runbook/wiki edits are documentation only. The previously
+accepted 54-test required check and hosted six-case/full-workflow results remain
+applicable to unchanged implementation. The PR will run normal required CI;
+there is no reason to repeat the accepted manual Galaxy run for prose edits.
+
+## Recommendation
+
+**Technically ready for Conda-backed Test Tool Shed publication; HOLD for
+administrative readiness and explicit authorization.** The public package,
+Galaxy execution, lint and reviewed archive pass. The authenticated Test account
+and create/update permission still require verification. Review and authorize
+merging the PR so the archive's public `main` documentation links resolve, then
+obtain separate explicit authorization before any Test Tool Shed creation or
+upload. No merge, `shed_create`, `shed_upload`, `shed_update`, Main Tool Shed,
+Bioconda, Zenodo or release-tag write has been performed.
+
+Public image registry identity is now verified; full container pull/execution
+remains a separate distribution limitation and does not invalidate the accepted
+Conda-backed Galaxy results. No publication is queued or scheduled.
+
+The original portable evidence bundle and per-file SHA-256 manifest remain
+unchanged. New read-only checks and the file review are retained separately
+under `readiness-followup/`; installed environments, dependency caches and
+BayesTraits binaries are not included in review deliverables.

@@ -22,10 +22,13 @@ Release citation: Bohyeon Yu and Aaron Diaz, SPICE v0.2.0,
 Installation and publication status
 -----------------------------------
 
-The Galaxy Conda requirement is ``spice-lineage=0.2.0``. It is expected from
-Bioconda after `PR #69381
-<https://github.com/bioconda/bioconda-recipes/pull/69381>`_ is accepted and
-published. Verify public package availability before final Tool Shed deployment.
+The Galaxy Conda requirement is ``spice-lineage=0.2.0``. `PR #69381
+<https://github.com/bioconda/bioconda-recipes/pull/69381>`_ merged. Public Bioconda
+build ``pyhdfd78af_0`` passed a fresh Linux installation and immutable-release
+payload checks on 2026-10-19. Public BioContainer verification remains pending.
+See the `public distribution validation record
+<https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/public-distribution-validation-2026-10-19.md>`_
+for evidence and the separate Galaxy and publication gates.
 
 SPICE is validated with **IQ-TREE 2.4.0**; the canonical Galaxy workflow pins the
 corresponding IUC tool. **BayesTraits V4.1.3** must be externally acquired and

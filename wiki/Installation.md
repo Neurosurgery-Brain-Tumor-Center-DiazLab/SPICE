@@ -2,7 +2,16 @@
 
 [Home](Home.md) · [Next: Input data](Input-Data.md)
 
-Current software version: **0.2.0**. Install from the lab source repository using the validated procedure below, or use a locally built package following the engineering guides. Public PyPI, Bioconda and container channels are published separately; verify availability before using a public package installation command.
+Current software version: **0.2.0**. Public Bioconda build `pyhdfd78af_0` passed a fresh Linux x86_64 installation with an empty cache on 2026-10-19. Install it using only conda-forge and bioconda:
+
+```bash
+conda create -n spice-public --override-channels --strict-channel-priority \
+  -c conda-forge -c bioconda 'spice-lineage=0.2.0=pyhdfd78af_0'
+conda run -n spice-public spice --version
+conda run -n spice-public iqtree2 --version
+```
+
+The verified solve supplied IQ-TREE 2.4.0 and R 4.3.3; see the [exact evidence and dependency export](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/public-distribution-validation-2026-10-19.md). BayesTraits V4.1.3 remains externally supplied. Public container registry identity is now recorded in the evidence; container execution remains unvalidated. PyPI publication is not established. The source installation procedure below remains available.
 
 ## Recommended installation: Conda/micromamba
 
@@ -74,7 +83,7 @@ The distribution name is `spice-lineage`; it installs the `spice` command and ac
 
 ### Configure external BayesTraits
 
-Acquire **BayesTraits V4.1.3** separately from the official upstream source. Follow the [integration guide's download and checksum details](../docs/integration-testing.md#reproducible-dependencies-and-binary-acquisition), then configure the existing executable:
+Acquire **BayesTraits V4.1.3** separately from the official upstream source. Follow the [integration guide's download and checksum details](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/integration-testing.md#reproducible-dependencies-and-binary-acquisition), then configure the existing executable:
 
 ```bash
 export BAYESTRAITS_BIN=/absolute/path/to/BayesTraitsV4
@@ -100,4 +109,4 @@ The dependency recipe already supplies IQ-TREE 2.4.0. IQ-TREE resolution uses `I
 
 The former unpinned CRAN/BiocManager procedure is not the currently cold-start-validated route. On fresh R 4.3.3 it failed to install/load required dependencies, including phangorn, phytools and ggtree. Unpinned resolution changes over time; use the Conda/micromamba procedure above for the validated dependency family.
 
-From a source checkout, `python SPICE.py` uses the same parser and implementation as `spice`. Local wheel development remains in [packaging](../docs/packaging.md), and specialized locked checks remain in [source CI](../docs/ci.md) and [real-tool integration](../docs/integration-testing.md). Conda/OCI build instructions remain in [distribution staging](../docs/distribution.md). For a server-managed installation, see [Galaxy](Galaxy.md).
+From a source checkout, `python SPICE.py` uses the same parser and implementation as `spice`. Local wheel development remains in [packaging](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/packaging.md), and specialized locked checks remain in [source CI](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/ci.md) and [real-tool integration](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/integration-testing.md). Conda/OCI build instructions remain in [distribution staging](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/blob/main/docs/distribution.md). For a server-managed installation, see [Galaxy](Galaxy.md).
