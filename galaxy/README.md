@@ -9,10 +9,11 @@ See [the Galaxy guide](../docs/galaxy.md) for administration, local Planemo
 validation and the publication boundary, and [the tutorial draft](training/tutorial.md)
 for synthetic data and collection mapping. Tool Shed and GTN publication
 are still pending. The intended Tool Shed repository is `diazlab/spice_lineage`.
-Public deployment requires verified Bioconda availability of `spice-lineage=0.2.0`
-after [PR #69381](https://github.com/bioconda/bioconda-recipes/pull/69381) is accepted
-and published, plus administrator provision of external BayesTraits V4.1.3,
-which is not redistributed.
+[Bioconda PR #69381](https://github.com/bioconda/bioconda-recipes/pull/69381) has merged.
+Public `spice-lineage=0.2.0` build `pyhdfd78af_0` passed fresh Linux installation
+and release-payload checks on 2026-10-19; see the [validation record](../docs/public-distribution-validation-2026-10-19.md).
+Public deployment also requires administrator provision of external
+BayesTraits V4.1.3, which is not redistributed.
 
 - `tools/`: shared macros, five XML wrappers, orchestration-only JSON adapter,
   synthetic tests, `.shed.yml` publication metadata and a [Tool Shed README](tools/README.rst).

@@ -131,11 +131,38 @@ job and into Summarize. Report files contain job stdout/stderr and runtime prove
 database, histories, environments, caches, credentials or executable downloads.
 
 The existing **SPICE Phase 3 Integration** Actions workflow remains manual-only
-and non-required. It retains the real scientific integration job and adds an
+and non-required. Its `package_source` choice defaults to `local`; select
+`public` for a fresh public Bioconda Galaxy installation on Ubuntu 24.04. It retains the real scientific integration job and adds an
 independent Galaxy job. Normal PR CI only runs inexpensive static/default/
 collection-manifest regressions and existing checks; its required status remains
 **Phase 1 required checks**. See [engineering handoff](engineering-handoff.md)
 for observed results and any outstanding acceptance gates.
+
+## Public Bioconda validation
+
+The default local regression path above is preserved. Select the separate public
+path explicitly, using the same pinned Planemo/Galaxy toolchain:
+
+```bash
+/path/to/distribution-tools/bin/python scripts/check_galaxy.py \
+  --package-source public \
+  --planemo /path/to/planemo/bin/planemo \
+  --conda-prefix /path/to/distribution-tools \
+  --galaxy-root /path/to/pinned-galaxy \
+  --work-dir /tmp/spice-public-galaxy-new
+```
+
+The work directory must be new. Public mode refuses `--distribution-result`,
+downloads and checks the official Bioconda index/artifact and the immutable
+release archive, bootstraps a fresh Conda root, and gives Galaxy an empty package
+cache. Only `conda-forge,bioconda` are configured. Galaxy itself installs SPICE;
+after each test suite the runner checks its actual Conda records, public URL,
+SHA-256, downloaded cache archive, installed Python/R payload and IQ-TREE 2.4.0.
+No package is built by this path. All six wrapper cases and the full workflow
+must pass with zero skips; the existing scientific and collection checks remain.
+BayesTraits is acquired temporarily, hash checked, and configured on the job
+destination exactly as in local mode. The [dated validation record](public-distribution-validation-2026-10-19.md)
+separates public Conda, container, Galaxy and Tool Shed outcomes.
 
 ## Test settings versus analysis settings
 
@@ -163,16 +190,14 @@ the tools. The tutorial remains a repository-local GTN-style draft, not an
 official GTN contribution.
 
 The Galaxy requirement remains `spice-lineage=0.2.0`.
-[Bioconda PR #69381](https://github.com/bioconda/bioconda-recipes/pull/69381) is
-open and under review; public package availability must be verified after
-upstream acceptance and publication. Final Tool Shed deployment is gated on
-that verification. BayesTraits V4.1.3 remains external, administrator-provided
-and not redistributed.
+[Bioconda PR #69381](https://github.com/bioconda/bioconda-recipes/pull/69381) merged
+on 2026-10-18 Pacific. Public build `pyhdfd78af_0` passed an isolated Linux
+installation with an empty cache on 2026-10-19. See the [public validation
+record](public-distribution-validation-2026-10-19.md) for exact artifact identity,
+Galaxy results and remaining gates. BayesTraits V4.1.3 remains external,
+administrator-provided and not redistributed.
 
-After review and separate maintainer authorization: validate the public Bioconda
-package and corresponding BioContainer; retest wrappers against public Bioconda
-plus administrator-provided BayesTraits; submit/publish the reviewed
-wrappers, pin the resulting tool IDs/revisions in the workflow, and rerun the
-complete workflow on the target server; then adapt and submit the tutorial to
-GTN through its review process. Publication requires separate decisions and
-cannot be inferred from successful local staging tests.
+The [Test Tool Shed runbook](test-toolshed-publication.md) contains proposed
+publication and validation commands. Do not execute its remote-write commands
+until the remaining gates are resolved and the maintainer separately authorizes
+publication. Tool Shed and GTN publication cannot be inferred from local tests.

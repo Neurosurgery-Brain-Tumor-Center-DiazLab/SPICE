@@ -2,7 +2,16 @@
 
 [Home](Home.md) · [Next: Input data](Input-Data.md)
 
-Current software version: **0.2.0**. Install from the lab source repository using the validated procedure below, or use a locally built package following the engineering guides. Public PyPI, Bioconda and container channels are published separately; verify availability before using a public package installation command.
+Current software version: **0.2.0**. Public Bioconda build `pyhdfd78af_0` passed a fresh Linux x86_64 installation with an empty cache on 2026-10-19. Install it using only conda-forge and bioconda:
+
+```bash
+conda create -n spice-public --override-channels --strict-channel-priority \
+  -c conda-forge -c bioconda 'spice-lineage=0.2.0=pyhdfd78af_0'
+conda run -n spice-public spice --version
+conda run -n spice-public iqtree2 --version
+```
+
+The verified solve supplied IQ-TREE 2.4.0 and R 4.3.3; see the [exact evidence and dependency export](../docs/public-distribution-validation-2026-10-19.md). BayesTraits V4.1.3 remains externally supplied. Public container verification and PyPI publication are not established. The source installation procedure below remains available.
 
 ## Recommended installation: Conda/micromamba
 

@@ -3,6 +3,13 @@ name: SPICE Phase 3 Integration
 # Deliberately independent of PR/push CI; never add this job as a required check.
 on:
   workflow_dispatch:
+    inputs:
+      package_source:
+        description: Galaxy SPICE package source (local regression or public Bioconda)
+        type: choice
+        options: [local, public]
+        default: local
+        required: true
 
 permissions:
   contents: read
@@ -73,10 +80,13 @@ jobs:
         run: |
           python3 -m venv "$RUNNER_TEMP/planemo"
           "$RUNNER_TEMP/planemo/bin/python" -m pip install -r ci/requirements-galaxy.txt
-      - name: Validate local Conda package, all wrappers and end-to-end Galaxy workflow
+      - name: Validate selected Conda package, all wrappers and end-to-end Galaxy workflow
         shell: micromamba-shell {0}
+        env:
+          SPICE_PACKAGE_SOURCE: ${{ inputs.package_source || 'local' }}
         run: >-
           python3 scripts/check_galaxy.py
+          --package-source "$SPICE_PACKAGE_SOURCE"
           --planemo "$RUNNER_TEMP/planemo/bin/planemo"
           --work-dir "$RUNNER_TEMP/spice-galaxy"
       # Explicit report allowlist. Never upload Galaxy histories, binaries, or caches.
@@ -99,3 +109,8 @@ jobs:
             ${{ runner.temp }}/spice-galaxy/distribution/*.log
             ${{ runner.temp }}/spice-galaxy/distribution/result.json
             ${{ runner.temp }}/spice-galaxy/distribution/package-files.json
+            ${{ runner.temp }}/spice-galaxy/public-artifact/artifact.json
+            ${{ runner.temp }}/spice-galaxy/public-artifact/anaconda.json
+            ${{ runner.temp }}/spice-galaxy/public-artifact/inspection/package-files.json
+            ${{ runner.temp }}/spice-galaxy/tools-public-install/*.json
+            ${{ runner.temp }}/spice-galaxy/workflow-public-install/*.json

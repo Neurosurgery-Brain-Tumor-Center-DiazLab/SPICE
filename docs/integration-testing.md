@@ -205,8 +205,10 @@ workflow pinned to IUC IQ-TREE 2.4.0. The existing manual integration workflow
 retains the real scientific job and adds a separate Galaxy job. It builds and
 checks this unpublished local Conda package before resolving Galaxy dependencies
 from its file channel. BayesTraits remains temporary and external. Normal
-required CI does not start Galaxy. Tool Shed/GTN and public package/container
-publication remain separate maintainer decisions.
+required CI does not start Galaxy. This local-build regression remains intact.
+The separate `--package-source public` path and its dated evidence are described
+in the [Galaxy guide](galaxy.md) and [public validation record](public-distribution-validation-2026-10-19.md).
+Tool Shed/GTN publication and public BioContainer validation remain separate gates.
 
 The suite additionally checks IQ-TREE-style internal support labels in both
 Newick and NEXUS ancestry inputs. BayesTraits receives a temporary copy without

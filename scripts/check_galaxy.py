@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Manual Linux Galaxy validation against an unpublished local SPICE Conda build."""
+"""Manual Linux Galaxy validation against local or public SPICE Conda artifacts."""
 import argparse
 import json
 import os
@@ -18,6 +18,7 @@ from urllib.parse import unquote, urlparse
 import xml.etree.ElementTree as ET
 
 from check_distribution import inspect_package, prepare_checks, sha256
+from check_public_distribution import prepare_public_artifact, verify_public_install
 from check_integration import bayestraits, BT_ARCHIVE_SHA256, BT_BINARY_SHA256
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -156,34 +157,57 @@ def check(args, work, report):
     report["iqtree"] = verify_iqtree_revision()
     if args.lint_only:
         report.update(status="incomplete", complete=False,
-                      pending=["local Conda package", "Galaxy wrapper tests", "end-to-end workflow"])
+                      pending=[args.package_source + " Conda package", "Galaxy wrapper tests", "end-to-end workflow"])
         print("INCOMPLETE: lint passed; functional Galaxy tests have not run.", flush=True)
         return
 
     require((conda_prefix / "bin/conda").is_file(), "Activate the Phase 5 distribution toolchain")
-    distribution_result = args.distribution_result
-    if distribution_result is None:
-        distribution_work = work / "distribution"
-        # The existing Phase 5 runner proves the package and clean installation.
-        run([conda_prefix / "bin/python", ROOT / "scripts/check_distribution.py", "--conda-only",
-             "--work-dir", distribution_work], work, env, "distribution", report)
-        distribution_result = distribution_work / "result.json"
-    distribution_result = distribution_result.resolve()
-    distribution = json.loads(distribution_result.read_text())
-    require(distribution["conda_checks"]["status"] == "pass" and
-            distribution["conda_checks"]["skipped"] == 0 and not distribution["published"],
-            "Local Conda evidence is incomplete or not an unpublished build")
-    package = Path(distribution["package"]).resolve(strict=True)
-    require(sha256(package) == distribution["package_sha256"], "Local package checksum mismatch")
-    inspection = work / "package-check"
-    inspection.mkdir()
-    _, _, expected = prepare_checks(inspection)
-    inspect_package(package, inspection, expected)
-    channel = package.parent.parent
-    require((channel / "noarch/repodata.json").is_file(), "Local Conda channel is not indexed")
-    report["local_conda"] = {"package": str(package), "sha256": sha256(package),
-                             "channel": channel.as_uri(), "version": distribution["spice_version"],
-                             "payload_matches_checkout": True, "distribution_result": str(distribution_result)}
+    if args.package_source == "public":
+        require(args.distribution_result is None, "Public mode cannot reuse local distribution evidence")
+        report["public_conda"] = prepare_public_artifact(work / "public-artifact")
+        # Galaxy gets its own new root prefix, envs directory, home, and empty cache.
+        # The caller's Conda is used only to bootstrap this isolated package manager.
+        cache = work / "conda-pkgs"
+        cache.mkdir()
+        env["CONDA_PKGS_DIRS"] = str(cache)
+        report["public_cache"] = {"path": str(cache), "initial_entries": list(cache.iterdir())}
+        bootstrap_conda = conda_prefix / "bin/conda"
+        conda_prefix = work / "public-conda"
+        env["CONDA_ENVS_PATH"] = str(conda_prefix / "envs")
+        run([bootstrap_conda, "create", "--yes", "--prefix", conda_prefix,
+             "--override-channels", "--strict-channel-priority",
+             "-c", "conda-forge", "-c", "bioconda", "conda=26.7.2", "python=3.11"],
+            work, env, "public-conda-bootstrap", report)
+        env["PATH"] = str(planemo.parent) + ":" + str(conda_prefix / "bin") + ":/usr/bin:/bin"
+        require(not list((conda_prefix / "envs").glob("*spice*")) and
+                not list(cache.glob("spice-lineage*")), "SPICE was cached before Galaxy jobs")
+        channels = "conda-forge,bioconda"
+    else:
+        distribution_result = args.distribution_result
+        if distribution_result is None:
+            distribution_work = work / "distribution"
+            # The existing Phase 5 runner proves the package and clean installation.
+            run([conda_prefix / "bin/python", ROOT / "scripts/check_distribution.py", "--conda-only",
+                 "--work-dir", distribution_work], work, env, "distribution", report)
+            distribution_result = distribution_work / "result.json"
+        distribution_result = distribution_result.resolve()
+        distribution = json.loads(distribution_result.read_text())
+        require(distribution["conda_checks"]["status"] == "pass" and
+                distribution["conda_checks"]["skipped"] == 0 and not distribution["published"],
+                "Local Conda evidence is incomplete or not an unpublished build")
+        package = Path(distribution["package"]).resolve(strict=True)
+        require(sha256(package) == distribution["package_sha256"], "Local package checksum mismatch")
+        inspection = work / "package-check"
+        inspection.mkdir()
+        _, _, expected = prepare_checks(inspection)
+        inspect_package(package, inspection, expected)
+        channel = package.parent.parent
+        require((channel / "noarch/repodata.json").is_file(), "Local Conda channel is not indexed")
+        report["local_conda"] = {"package": str(package), "sha256": sha256(package),
+                                 "channel": channel.as_uri(), "version": distribution["spice_version"],
+                                 "payload_matches_checkout": True, "distribution_result": str(distribution_result)}
+
+        channels = channel.as_uri() + ",conda-forge,bioconda"
 
     galaxy_root = args.galaxy_root.resolve() if args.galaxy_root else work / "galaxy-source"
     if args.galaxy_root is None:
@@ -198,7 +222,7 @@ def check(args, work, report):
     versions = dict(re.findall(r'^(VERSION_MAJOR|VERSION_MINOR) = "([^"\n]+)"', version_text, re.M))
     require(versions.get("VERSION_MAJOR") == "25.0", "Unexpected Galaxy major/minor")
     report["galaxy"] = {"commit": revision, "version": versions["VERSION_MAJOR"] + "." + versions["VERSION_MINOR"], "profile": "25.0"}
-    print(json.dumps({key: report[key] for key in ("planemo", "galaxy", "iqtree", "local_conda")}, indent=2), flush=True)
+    print(json.dumps({key: report[key] for key in ("planemo", "galaxy", "iqtree", "public_conda" if args.package_source == "public" else "local_conda")}, indent=2), flush=True)
     # Pin pip explicitly so build constraints apply inside isolated dependency builds.
     galaxy_venv = work / "galaxy-venv"
     run([planemo.parent / "python", "-m", "venv", galaxy_venv], work, env, "galaxy-venv", report, 180)
@@ -208,7 +232,7 @@ def check(args, work, report):
     report["galaxy"]["bootstrap_pip"] = "26.2.1"
     common = ["--galaxy_root", galaxy_root, "--galaxy_python_version", "3.11",
               "--galaxy_startup_timeout", "1200", "--conda_prefix", conda_prefix,
-              "--conda_channels", channel.as_uri() + ",conda-forge,bioconda",
+              "--conda_channels", channels,
               "--conda_dependency_resolution", "--conda_auto_install", "--no_conda_auto_init",
               "--job_workers", "1", "--no_cleanup"]
     binary = None
@@ -235,7 +259,8 @@ def check(args, work, report):
             report["bayestraits"]["job_environment"] = "local destination BAYESTRAITS_BIN"
             expected_tools = sum(len(ET.parse(path).getroot().findall("tests/test"))
                                  for path in tools.glob("spice_*.xml"))
-            for name, target, count, extra in [("tools", tools, expected_tools, []),
+            require(expected_tools == 6, "Expected exactly six required wrapper cases")
+            for name, target, count, extra in [("tools", tools, 6, []),
                                                ("workflow", workflow, 1, ["--extra_tools", tools])]:
                 test_report = work / (name + ".json")
                 run([planemo, "test", target, *common, *extra,
@@ -247,14 +272,21 @@ def check(args, work, report):
                 if name == "workflow":
                     report["workflow_execution"] = validate_workflow_execution(test_report)
                 installed_prefix = conda_prefix / "envs" / "__spice-lineage@0.2.0"
-                records = list((installed_prefix / "conda-meta").glob("spice-lineage-*.json"))
-                require(len(records) == 1, "Galaxy SPICE installation record is missing or ambiguous")
-                installed = json.loads(records[0].read_text())
-                require(installed.get("sha256") == sha256(package) and
-                        Path(unquote(urlparse(installed["url"]).path)).resolve() == package,
-                        "Galaxy used a stale or nonlocal SPICE artifact; use a fresh Conda toolchain prefix")
-                report["galaxy_spice_install"] = {"prefix": str(installed_prefix),
-                                                  "url": installed["url"], "sha256": installed["sha256"]}
+                if args.package_source == "public":
+                    report.setdefault("galaxy_spice_installs", {})[name] = verify_public_install(
+                        installed_prefix, report["public_conda"], work / (name + "-public-install"))
+                    cached = work / "conda-pkgs" / report["public_conda"]["filename"]
+                    require(cached.is_file() and sha256(cached) == report["public_conda"]["sha256"],
+                            "Galaxy did not download the public artifact into its fresh cache")
+                else:
+                    records = list((installed_prefix / "conda-meta").glob("spice-lineage-*.json"))
+                    require(len(records) == 1, "Galaxy SPICE installation record is missing or ambiguous")
+                    installed = json.loads(records[0].read_text())
+                    require(installed.get("sha256") == sha256(package) and
+                            Path(unquote(urlparse(installed["url"]).path)).resolve() == package,
+                            "Galaxy used a stale or nonlocal SPICE artifact; use a fresh Conda toolchain prefix")
+                    report["galaxy_spice_install"] = {"prefix": str(installed_prefix),
+                                                      "url": installed["url"], "sha256": installed["sha256"]}
     finally:
         if binary is not None:
             report["bayestraits_removed"] = not binary.exists()
@@ -269,13 +301,15 @@ def main():
     parser.add_argument("--planemo", type=Path, default=Path(shutil.which("planemo") or "planemo"))
     parser.add_argument("--conda-prefix", type=Path, default=Path(sys.prefix))
     parser.add_argument("--galaxy-root", type=Path, help="Reuse a checkout of the exact pinned Galaxy commit")
+    parser.add_argument("--package-source", choices=("local", "public"), default="local",
+                        help="Local regression build (default) or isolated public Bioconda installation")
     parser.add_argument("--distribution-result", type=Path, help="Reuse verified local Phase 5 Conda evidence; payload is checked again")
     parser.add_argument("--lint-only", action="store_true", help="Report INCOMPLETE; do not claim functional acceptance")
     args = parser.parse_args()
     work = args.work_dir.expanduser().resolve()
     require(not work.is_relative_to(ROOT), "Work directory must be outside SPICE")
     work.mkdir(parents=True, exist_ok=False)
-    report = {"status": "running", "complete": False, "published": False, "commands": []}
+    report = {"status": "running", "complete": False, "published": False, "package_source": args.package_source, "commands": []}
     started = time.monotonic()
     try:
         check(args, work, report)

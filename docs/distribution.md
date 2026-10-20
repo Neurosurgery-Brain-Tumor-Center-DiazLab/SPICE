@@ -1,10 +1,11 @@
 # Conda and OCI distribution staging
 
-Current software version: **0.2.0**. These recipes and scripts build local
-review artifacts only. Public PyPI, Bioconda, BioContainer and other registry
-channels are published separately; verify availability before documenting
-public installation commands. Galaxy validation uses the local staging package;
-see [the Galaxy guide](galaxy.md).
+Current software version: **0.2.0**. Public Bioconda build `pyhdfd78af_0` passed
+a fresh Linux installation and immutable-release payload checks on 2026-10-19;
+see the [public validation record](public-distribution-validation-2026-10-19.md).
+The local build/OCI regression procedures below remain available. Galaxy now
+supports both local and public validation; see [the Galaxy guide](galaxy.md).
+Public BioContainer verification and Tool Shed publication remain separate gates.
 
 ## Architecture and immutable source
 
@@ -26,8 +27,9 @@ The downloaded archive matches the released tag, including both version files
 and the Python/R source; it does not include post-release DOI documentation
 commits from main. The annotated tag object is
 `b58b44c4630287ef36314a6f56de690ea00ec8b6` and must remain unchanged.
-The recipe is ready for external submission to **bioconda/bioconda-recipes**;
-Bioconda acceptance and publication have **not** occurred.
+[Bioconda PR #69381](https://github.com/bioconda/bioconda-recipes/pull/69381)
+merged on 2026-10-18 Pacific. The public artifact was independently verified
+on 2026-10-19; the source tag and recipe were not changed for this validation.
 
 The released source includes the minimal BayesTraits serialization fix for
 IQ-TREE internal support labels. Only the temporary subprocess NEXUS copy omits
@@ -242,5 +244,7 @@ workflow pinned to IUC IQ-TREE 2.4.0. The existing manual integration workflow
 retains the real scientific job and adds a separate Galaxy job. It builds and
 checks this unpublished local Conda package before resolving Galaxy dependencies
 from its file channel. BayesTraits remains temporary and external. Normal
-required CI does not start Galaxy. Tool Shed/GTN and public package/container
-publication remain separate maintainer decisions.
+required CI does not start Galaxy. This local-build regression remains intact.
+The separate `--package-source public` path and its dated evidence are described
+in the [Galaxy guide](galaxy.md) and [public validation record](public-distribution-validation-2026-10-19.md).
+Tool Shed/GTN publication and public BioContainer validation remain separate gates.
