@@ -13,8 +13,8 @@ uploads too, so the initial creation below explicitly uses `--skip_upload`.
 ## Reviewed inputs and preflight
 
 Review and merge the validation/documentation branch before publication so the
-new README evidence links under `main` resolve publicly. This task did not push
-or merge that branch.
+new README evidence links under `main` resolve publicly. The feature branch
+was pushed for hosted validation; this task did not merge it.
 
 Publication commands below are proposed only after authorization. The observed
 review paths are on WSL. Full Galaxy validation requires a full Linux host such
@@ -127,6 +127,29 @@ mkdir -p "$HOME" "$CONDA_PKGS_DIRS"
 export GALAXY_VIRTUAL_ENV="$RUN/galaxy-venv"
 export PIP_BUILD_CONSTRAINT="$REPO/ci/galaxy-build-constraints.txt"
 export RUN REPO
+# Independently verify the current public artifact before the published-tool run.
+"$CONDA_TOOLS/bin/python" - <<'PY'
+import os, sys
+from pathlib import Path
+sys.path.insert(0, str(Path(os.environ['REPO']) / 'scripts'))
+from check_public_distribution import prepare_public_artifact
+prepare_public_artifact(Path(os.environ['RUN']) / 'public-artifact')
+PY
+verify_public_spice_install() {
+  "$CONDA_TOOLS/bin/python" - "$1" <<'PY'
+import json, os, sys
+from pathlib import Path
+sys.path.insert(0, str(Path(os.environ['REPO']) / 'scripts'))
+from check_public_distribution import verify_public_install
+from check_distribution import sha256
+work = Path(os.environ['RUN'])
+artifact = json.loads((work / 'public-artifact/artifact.json').read_text())
+assert artifact['sha256'] == '42c1adce162effda9eb151c3f7ba87bd0a0dd23111f8d6f21f16f10e7bd42974'
+print(verify_public_install(work / 'conda/envs/__spice-lineage@0.2.0',
+                           artifact, work / (sys.argv[1] + '-public-install')))
+assert sha256(work / 'conda-pkgs' / artifact['filename']) == artifact['sha256']
+PY
+}
 # BAYESTRAITS_BIN must already name the administrator's executable.
 "$CONDA_TOOLS/bin/python" - <<'PY'
 import hashlib, json, os
@@ -152,6 +175,7 @@ COMMON=(--galaxy_root "$GALAXY_ROOT" --galaxy_python_version 3.11
   --shed_data_dir "$RUN/shed-state" \
   --test_output "$RUN/tools.html" --test_output_json "$RUN/tools.json" \
   --test_output_xunit "$RUN/tools.xml" --job_output_files "$RUN/outputs"
+verify_public_spice_install tools
 ```
 
 This installs the published tools into a fresh local Galaxy. Verify the installed
@@ -179,6 +203,7 @@ No unpublished revision is inserted into the release workflow.
   "${COMMON[@]}" --shed_data_dir "$RUN/shed-state" \
   --test_output "$RUN/workflow.html" --test_output_json "$RUN/workflow.json" \
   --test_output_xunit "$RUN/workflow.xml" --job_output_files "$RUN/workflow-outputs"
+verify_public_spice_install workflow
 "$CONDA_TOOLS/bin/python" - <<'PY'
 import os, sys
 from pathlib import Path
