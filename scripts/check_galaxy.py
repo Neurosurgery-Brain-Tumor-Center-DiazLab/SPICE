@@ -260,8 +260,15 @@ def check(args, work, report):
             expected_tools = sum(len(ET.parse(path).getroot().findall("tests/test"))
                                  for path in tools.glob("spice_*.xml"))
             require(expected_tools == 6, "Expected exactly six required wrapper cases")
+            # A directory registration also watches macros.xml as a potential tool.
+            # Public validation registers only the five actual wrapper XML files.
+            workflow_extra = ["--extra_tools", tools]
+            if args.package_source == "public":
+                wrappers = sorted(tools.glob("spice_*.xml"))
+                require(len(wrappers) == 5, "Expected exactly five SPICE wrappers")
+                workflow_extra = [value for wrapper in wrappers for value in ("--extra_tools", wrapper)]
             for name, target, count, extra in [("tools", tools, 6, []),
-                                               ("workflow", workflow, 1, ["--extra_tools", tools])]:
+                                               ("workflow", workflow, 1, workflow_extra)]:
                 test_report = work / (name + ".json")
                 run([planemo, "test", target, *common, *extra,
                      "--test_output", work / (name + ".html"),

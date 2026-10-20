@@ -16,7 +16,12 @@ Review and merge the validation/documentation branch before publication so the
 new README evidence links under `main` resolve publicly. This task did not push
 or merge that branch.
 
-Run in Linux Bash only after authorization. These paths identify the reviewed
+Publication commands below are proposed only after authorization. The observed
+review paths are on WSL. Full Galaxy validation requires a full Linux host such
+as Ubuntu 24.04: the pinned Galaxy Celery forkserver failed during uploads on
+WSL1. Transfer the inspected archive/evidence to that host, provision the pinned
+Conda/Planemo/Galaxy toolchains from the Galaxy guide, and set the path variables
+to their actual locations. Preserve the reviewed archive hash. These paths identify the reviewed
 local artifact, not a freshly generated archive with unreviewed changes:
 
 ```bash

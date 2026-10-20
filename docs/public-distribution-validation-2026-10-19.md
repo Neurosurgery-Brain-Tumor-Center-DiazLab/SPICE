@@ -131,13 +131,25 @@ is only a generic application shell and is not evidence of an existing image.
 
 ## Galaxy public-package validation
 
-The first local attempt failed during Galaxy input uploads on WSL1, before any
-SPICE job or public SPICE installation. Galaxy's hard-coded Celery `forkserver`
-failed to reconstruct an AF_UNIX socket (`OSError: [Errno 22] Invalid argument`,
-then `EOFError`). It was interrupted with SIGINT; logs and cleanup status are
-retained under `galaxy-public/` and `galaxy-wsl-stop.json`. This is **not** a
-wrapper or workflow pass. A fresh hosted Ubuntu 24.04 public-package run is
-prepared through the existing manual integration workflow; its result is pending.
+The first hosted public run **passed** all **six wrapper cases** and the **one
+full workflow**, with **zero skips**, at commit
+`458ab862f7a0c8326fcc2ea2adec9396d2e4626f` in
+[run 39354962350](https://github.com/Neurosurgery-Brain-Tumor-Center-DiazLab/SPICE/actions/runs/39354962350).
+The public URL/build/SHA-256 and release payload were verified from Galaxy's
+actual installed Conda records after both suites; its fresh cache contained the
+same downloaded archive. The real IQ-TREE/BayesTraits integration job also passed.
+
+A post-test log audit found directory registration repeatedly treating
+`macros.xml` as a standalone tool (134,935 failed load messages). This did not
+fail any required test, but produced an unnecessarily large log. Public mode now
+registers the five wrapper XML files explicitly; a fresh hosted rerun is being
+prepared for that validation-only correction. Local mode is unchanged.
+
+The initial WSL1 attempt failed during input uploads before any SPICE job or
+public SPICE installation: Galaxy's hard-coded Celery `forkserver` could not
+reconstruct an AF_UNIX socket (`OSError: [Errno 22] Invalid argument`, then
+`EOFError`). It was stopped with SIGINT. Temporary BayesTraits cleanup succeeded.
+Its failure logs remain in `galaxy-public/`; no WSL workaround patched Galaxy.
 
 The existing local-package validation remains the default, including its local
 artifact checksum, payload and actual local Conda origin checks.
@@ -240,9 +252,8 @@ The immutable tag, scientific Python/R payload, algorithms, QC thresholds,
 scientific defaults, workflow scientific settings, IUC revision, Bioconda
 recipe/public package, Zenodo record and both Tool Sheds were untouched.
 Temporary BayesTraits handling is reported with the Galaxy outcome above.
-No GitHub PR has been created. The feature branch is prepared for pushing to
-dispatch an isolated hosted validation run; no merge or release-tag update is
-authorized by that testing step.
+No GitHub PR has been created. The feature branch was pushed solely to dispatch
+the isolated hosted validation run. Main and the release tag were not updated.
 
 ## Recommendation
 
