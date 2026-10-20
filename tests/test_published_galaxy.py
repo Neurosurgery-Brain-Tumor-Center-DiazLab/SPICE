@@ -1,17 +1,28 @@
 """Offline fail-closed checks for published Tool Shed validation."""
 import copy
 import json
+import sqlite3
 from pathlib import Path
 import sys
 import tempfile
 import unittest
+import xml.etree.ElementTree as ET
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 import check_published_galaxy as published
+import planemo_published
 
 
 class PublishedValidation(unittest.TestCase):
+
+    def test_shed_registry_adapter_preserves_main_and_adds_test_once(self):
+        original = '<tool_sheds><tool_shed name="Main" url="https://toolshed.g2.bx.psu.edu" /></tool_sheds>'
+        configured = planemo_published.register_test_shed(original)
+        self.assertEqual(configured, planemo_published.register_test_shed(configured))
+        self.assertEqual({n.attrib['url'] for n in ET.fromstring(configured)},
+                         {'https://toolshed.g2.bx.psu.edu', published.SHED})
+
     def metadata(self):
         repository = {"id": published.REPOSITORY_ID, "owner": "diazlab", "name": "spice_lineage"}
         tools = [{"id": name, "guid": f"{published.HOST}/repos/diazlab/spice_lineage/{name}/{published.VERSION}",
@@ -101,6 +112,45 @@ class PublishedValidation(unittest.TestCase):
             source.write_text(json.dumps(runtime))
             with self.assertRaises(RuntimeError):
                 published.audit_runtime_outputs(datasets, binary, 1, root / 'fail')
+
+
+    def test_retained_results_follow_recorded_dataset_uuids(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            datasets = root / 'datasets'
+            datasets.mkdir()
+            database = root / 'workflow.sqlite'
+            steps = {}
+            number = 0
+            with sqlite3.connect(database) as connection:
+                connection.execute('CREATE TABLE dataset (id INTEGER, uuid TEXT, external_filename TEXT)')
+                for label, names, count in [('clones', ['assignments'], 1),
+                        ('ancestry', ['qc_status', 'ancestral_states'], 3),
+                        ('plasticity', ['plasticity_test'], 3), ('summarize', ['summary'], 1)]:
+                    jobs = []
+                    for j in range(count):
+                        outputs = {}
+                        for name in names:
+                            number += 1
+                            uuid = f'00000000-0000-0000-0000-{number:012d}'
+                            outputs[name] = {'id': str(number), 'uuid': uuid}
+                            connection.execute('INSERT INTO dataset VALUES (?, ?, NULL)', (number, uuid.replace('-', '')))
+                            text = 'synthetic\toutput\n'
+                            if name == 'summary':
+                                text = 'clone_id\ttest_status\talternative\tn_tests_planned\tq_value\n'
+                                text += ''.join(f'Clone_{i}\tpass\tgreater\t3\t1.0\n' for i in range(1, 4))
+                            (datasets / f'dataset_{number}.dat').write_text(text)
+                        jobs.append({'id': f'{label}-{j}', 'outputs': outputs})
+                    steps[label] = {'workflow_step_label': label, 'jobs': jobs}
+            report = root / 'workflow.json'
+            report.write_text(json.dumps({'tests': [{'data': {'invocation_details': {'steps': steps}}}]}))
+            result = published.retain_workflow_results(report, datasets, database, root / 'results')
+            self.assertEqual(len(result['files']), 11)
+            self.assertEqual(len(result['summary_rows']), 3)
+            with sqlite3.connect(database) as connection:
+                connection.execute("UPDATE dataset SET external_filename='/outside/data' WHERE id=1")
+            with self.assertRaises(RuntimeError):
+                published.retain_workflow_results(report, datasets, database, root / 'rejected')
 
 
 if __name__ == '__main__':

@@ -2,11 +2,13 @@
 """Read-only validation of the pinned published Test Tool Shed SPICE revision."""
 import argparse
 import copy
+import csv
 import json
 from pathlib import Path
 import platform
 import resource
 import shutil
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -229,6 +231,48 @@ def audit_runtime_outputs(directory, binary, required_inference, evidence):
     return runtimes
 
 
+
+def retain_workflow_results(report_path, datasets, database, evidence):
+    """Resolve job outputs through the disposable Galaxy DB; retain text only."""
+    evidence.mkdir()
+    data = json.loads(report_path.read_text())["tests"][0]["data"]
+    steps = {step["workflow_step_label"]: step for step in data["invocation_details"]["steps"].values()}
+    selected = {"clones": {"assignments"}, "ancestry": {"qc_status", "ancestral_states"},
+                "plasticity": {"plasticity_test"}, "summarize": {"summary"}}
+    records = []
+    with sqlite3.connect(database.as_uri() + "?mode=ro", uri=True) as connection:
+        for label, names in selected.items():
+            for index, job in enumerate(steps[label]["jobs"], 1):
+                for name in sorted(names):
+                    output = job["outputs"][name]
+                    rows = connection.execute(
+                        "SELECT id, external_filename FROM dataset WHERE replace(uuid, '-', '') = ?",
+                        (output["uuid"].replace("-", ""),)).fetchall()
+                    require(len(rows) == 1 and not rows[0][1], "Ambiguous or external Galaxy output dataset")
+                    filenames = {f"dataset_{rows[0][0]}.dat", f"dataset_{output['uuid']}.dat"}
+                    candidates = [p for p in datasets.rglob("*.dat") if p.name in filenames]
+                    require(len(candidates) == 1 and candidates[0].resolve().is_relative_to(datasets.resolve()),
+                            "Output dataset is missing or outside isolated storage")
+                    source = candidates[0]
+                    require(source.stat().st_size < 10000000, "Unexpectedly large synthetic output")
+                    text = source.read_text()
+                    destination = evidence / f"{label}-{index}-{name}.tsv"
+                    destination.write_text(text)
+                    records.append({"step": label, "job_id": job["id"], "name": name,
+                                    "dataset": output, "file": destination.name, "sha256": sha256(destination)})
+    summary = evidence / "summarize-1-summary.tsv"
+    with summary.open() as handle:
+        rows = list(csv.DictReader(handle, delimiter="\t"))
+    require(len(rows) == 3 and {r["clone_id"] for r in rows} == {"Clone_1", "Clone_2", "Clone_3"},
+            "Summary clone family differs")
+    require(all(r["test_status"] == "pass" and r["alternative"] == "greater"
+                and int(r["n_tests_planned"]) == 3 and 0 <= float(r["q_value"]) <= 1 for r in rows),
+            "Summary results fail validated workflow expectations")
+    result = {"files": records, "summary_rows": rows}
+    save(evidence / "manifest.json", result)
+    return result
+
+
 def check(args, work, report):
     require(platform.system() == "Linux" and platform.machine() == "x86_64", "Linux x86_64 required")
     require(not work.is_relative_to(ROOT) and " " not in str(work), "Use a new external directory without spaces")
@@ -301,6 +345,9 @@ def check(args, work, report):
     require(observed == GALAXY_COMMIT, "Pinned Galaxy source differs")
     run(["git", "-C", galaxy, "diff", "--exit-code", "HEAD"], work, env, "galaxy-clean", report, 60)
     report["galaxy"] = {"commit": observed, "profile": "25.0", "server_python": "3.11"}
+    report["planemo_configuration_adapter"] = {
+        "file": "scripts/planemo_published.py", "sha256": sha256(ROOT / "scripts/planemo_published.py"),
+        "purpose": "Register Test Tool Shed for shed_test tool runnables; no Planemo/Galaxy/tool files patched"}
     venv = work / "galaxy-venv"
     run([planemo.parent / "python", "-m", "venv", venv], work, env, "galaxy-venv", report, 180)
     run([venv / "bin/python", "-m", "pip", "install", "pip==26.2.1"], work, env, "galaxy-pip", report, 300)
@@ -327,7 +374,7 @@ def check(args, work, report):
             selector = work / "shed-selector"
             selector.mkdir()
             commands = [
-                ("tools", [planemo, "shed_test", selector, "--shed_target", SHED, "--owner", OWNER, "--name", NAME], 6, 6, 2),
+                ("tools", [planemo.parent / "python", ROOT / "scripts/planemo_published.py", "shed_test", selector, "--shed_target", SHED, "--owner", OWNER, "--name", NAME], 6, 6, 2),
                 ("workflow", [planemo, "test", workflow], 1, 9, 6),
             ]
             for label, command, cases, jobs, inference in commands:
@@ -356,6 +403,8 @@ def check(args, work, report):
                 save(work / (label + "-bayestraits-execution.json"), runtimes)
                 if label == "workflow":
                     report["workflow_execution"] = validate_workflow_execution(report_path)
+                    report["workflow_results"] = retain_workflow_results(
+                        report_path, datasets, work / "workflow.sqlite", work / "workflow-results")
                 report[label].update(public_jobs=len(executions), external_bayestraits_inference_jobs=len(runtimes))
     finally:
         if binary is not None:

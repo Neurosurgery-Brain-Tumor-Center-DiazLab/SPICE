@@ -133,3 +133,5 @@ jobs:
             ${{ runner.temp }}/spice-galaxy/galaxy/workflows/tools.yml
             ${{ runner.temp }}/spice-galaxy/tools-runtime-evidence/*.json
             ${{ runner.temp }}/spice-galaxy/workflow-runtime-evidence/*.json
+            ${{ runner.temp }}/spice-galaxy/workflow-results/*.json
+            ${{ runner.temp }}/spice-galaxy/workflow-results/*.tsv
