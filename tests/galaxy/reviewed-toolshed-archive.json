@@ -1,0 +1,131 @@
+{
+  "changeset": "5132fb8a542e",
+  "files": {
+    "README.rst": {
+      "sha256": "c5da296e34915514b23b049cc5f8ee29040419736e1a5a0a5df164fe69418206",
+      "size": 2357
+    },
+    "macros.xml": {
+      "sha256": "34d57e2b9eceba3e7c9ddf32ff5bbb7272cae5d74e10fb91cd1b07e9652c8b88",
+      "size": 4697
+    },
+    "run_spice.py": {
+      "sha256": "312db5e80b2ba63ccba339d4e3f8998cc8128769c49103b5248a5cb83ba7690d",
+      "size": 3201
+    },
+    "spice_ancestry.xml": {
+      "sha256": "ae44310ec8122f9788402f152663c3c62a883bd6ec71280030af71acc41f7fd9",
+      "size": 4893
+    },
+    "spice_clones.xml": {
+      "sha256": "e065d72e3d9590bbdf995c2bfccb246f5cbb750a34c5fd80c8e9f9415e73ca5b",
+      "size": 6705
+    },
+    "spice_filter.xml": {
+      "sha256": "a5adaf141440af773ba5a6c1c93720edccbb78852fabbe74a9de9c88ad808603",
+      "size": 5462
+    },
+    "spice_plasticity.xml": {
+      "sha256": "f7fbb3328bbac17bd78a23d51a83b49a8db817f7f221e6071ed5802a9f869f31",
+      "size": 7166
+    },
+    "spice_summarize.xml": {
+      "sha256": "d3a283cdc9f4c43319da8cc33bdbae4cd37dfd3c35d85c25897912a69a7d457d",
+      "size": 2801
+    },
+    "test-data/Clone_1.nwk": {
+      "sha256": "7d01e095f0b22abfc8776da9adecdea404d55c81d7712a440420b1a75c36e013",
+      "size": 117
+    },
+    "test-data/Clone_2.nwk": {
+      "sha256": "62ef70e2b96c8bd639f6bf731ad3297b1cc93190f96fdd53037600c3e43551cc",
+      "size": 118
+    },
+    "test-data/Clone_3.nwk": {
+      "sha256": "304c0cb95c0207cd0943d73bbf84de6e1b36db2f521a6fc2dc40bdf508e7c65a",
+      "size": 118
+    },
+    "test-data/README.md": {
+      "sha256": "84f778c444d29d489d366baad3038fd3546f9f37e0f0458508fbe17b1b643c48",
+      "size": 1511
+    },
+    "test-data/ancestry/README.md": {
+      "sha256": "2ee67aab29e13525ed1ff52bda0f77a7cd01929df935db5581c5506a3f4a1a74",
+      "size": 1907
+    },
+    "test-data/ancestry/ancestral_states.tsv": {
+      "sha256": "55196e7edb1c18d4db74cd3e6715cfe3734a031f3d74d2a9e9815fb9b419462c",
+      "size": 2868
+    },
+    "test-data/ancestry/state_order.tsv": {
+      "sha256": "8df418464739783efb10332bd417e841c1a806e3f5e3bc3bbeb6c5b758c5ed03",
+      "size": 42
+    },
+    "test-data/ancestry/states-extra.tsv": {
+      "sha256": "6c582b277d8ff45c9998675c6744f692df0dbe285557ea206e80152edfd9becd",
+      "size": 228
+    },
+    "test-data/ancestry/states.tsv": {
+      "sha256": "fdc7f97af587a5bfe56ef0e24bd1c1d8563b55c0018cf90d2f9e9f9f9ee3eee9",
+      "size": 206
+    },
+    "test-data/ancestry/tree.nwk": {
+      "sha256": "993547b4bde4bda8a7875344f040abdaa1d0acf762fef20206ff2177a2dd1651",
+      "size": 147
+    },
+    "test-data/clone-assignments.tsv": {
+      "sha256": "530a85db38e8c87080b9d611135bbb30e09e97bf0148f6557872e73d1ec2dcaa",
+      "size": 360
+    },
+    "test-data/filter.csv": {
+      "sha256": "191290caebbb9e0c39a15757c93b3bed8969eccef314ae5c4d33859ee4da72d6",
+      "size": 133
+    },
+    "test-data/standard/cells.tsv": {
+      "sha256": "33973647ac8eb8371224a54ab2590e6d7c3a92bc01b24a1a048eb665c2b86e51",
+      "size": 32
+    },
+    "test-data/standard/matrix.tsv": {
+      "sha256": "36f7c4d5b95e9550935ea3e8bc794f401e66162e07be977efe92fd6b150a607a",
+      "size": 144
+    },
+    "test-data/standard/variants.tsv": {
+      "sha256": "a22baeb281913c1bdc1239d82c129a4f8b59eda0787238767e09c6a4572f697a",
+      "size": 125
+    },
+    "test-data/summary/one.tsv": {
+      "sha256": "e0597a1287fa220df7522494a488a7a02aed6f97de04fc03f10210e422527d37",
+      "size": 136
+    },
+    "test-data/summary/two.tsv": {
+      "sha256": "55c47c9325f5d8b53566aa1f18ca30caacf4b4e4094c7afc44b4cd113af92734",
+      "size": 135
+    },
+    "test-data/supported-tree.nwk": {
+      "sha256": "0c631670d5463366f81d9a59feeb8bf8553f9b0aafc2b6cfdb1fd10d7d209fae",
+      "size": 430
+    },
+    "test-data/workflow/cells.tsv": {
+      "sha256": "a8748bc69689565234b03a82df21fdc22d71cceeaaa025a4be9e727a6674a625",
+      "size": 156
+    },
+    "test-data/workflow/matrix.tsv": {
+      "sha256": "6ba5bfd05c4032ef722849f6265f8ce2758dfaa635da0767bbfff02e358966ed",
+      "size": 61560
+    },
+    "test-data/workflow/state_order.tsv": {
+      "sha256": "8df418464739783efb10332bd417e841c1a806e3f5e3bc3bbeb6c5b758c5ed03",
+      "size": 42
+    },
+    "test-data/workflow/states.tsv": {
+      "sha256": "43a21addb33cdfa57b3c14d308edc5d92d92b8e09c76f812e657c40b1c4fde46",
+      "size": 267
+    },
+    "test-data/workflow/variants.tsv": {
+      "sha256": "3a7e5e28aca0acabc6018bd386ca69c2654d6281fa3038c61287c4161422c922",
+      "size": 21861
+    }
+  },
+  "full_changeset": "5132fb8a542e93ebecfca1a2bb9628c02b96137a",
+  "reviewed_archive_sha256": "125a5180889a14186117a5e89235b8288da67e95abef3a0cb2d9804c952d19bc"
+}

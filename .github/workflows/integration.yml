@@ -5,9 +5,9 @@ on:
   workflow_dispatch:
     inputs:
       package_source:
-        description: Galaxy SPICE package source (local regression or public Bioconda)
+        description: Galaxy validation (local package, public package, or published Test Tool Shed)
         type: choice
-        options: [local, public]
+        options: [local, public, published]
         default: local
         required: true
 
@@ -81,12 +81,20 @@ jobs:
           python3 -m venv "$RUNNER_TEMP/planemo"
           "$RUNNER_TEMP/planemo/bin/python" -m pip install -r ci/requirements-galaxy.txt
       - name: Validate selected Conda package, all wrappers and end-to-end Galaxy workflow
+        if: inputs.package_source != 'published'
         shell: micromamba-shell {0}
         env:
           SPICE_PACKAGE_SOURCE: ${{ inputs.package_source || 'local' }}
         run: >-
           python3 scripts/check_galaxy.py
           --package-source "$SPICE_PACKAGE_SOURCE"
+          --planemo "$RUNNER_TEMP/planemo/bin/planemo"
+          --work-dir "$RUNNER_TEMP/spice-galaxy"
+      - name: Validate published Test Tool Shed revision and workflow
+        if: inputs.package_source == 'published'
+        shell: micromamba-shell {0}
+        run: >-
+          python3 scripts/check_published_galaxy.py
           --planemo "$RUNNER_TEMP/planemo/bin/planemo"
           --work-dir "$RUNNER_TEMP/spice-galaxy"
       # Explicit report allowlist. Never upload Galaxy histories, binaries, or caches.
@@ -114,3 +122,14 @@ jobs:
             ${{ runner.temp }}/spice-galaxy/public-artifact/inspection/package-files.json
             ${{ runner.temp }}/spice-galaxy/tools-public-install/*.json
             ${{ runner.temp }}/spice-galaxy/workflow-public-install/*.json
+            ${{ runner.temp }}/spice-galaxy/published-*/**/*.json
+            ${{ runner.temp }}/spice-galaxy/published-verification.json
+            ${{ runner.temp }}/spice-galaxy/*-revision-guard/*.json
+            ${{ runner.temp }}/spice-galaxy/*-installed-revision.json
+            ${{ runner.temp }}/spice-galaxy/*-job-provenance.json
+            ${{ runner.temp }}/spice-galaxy/*-bayestraits-execution.json
+            ${{ runner.temp }}/spice-galaxy/galaxy/workflow-identity-changes.json
+            ${{ runner.temp }}/spice-galaxy/galaxy/workflows/spice_lineage_analysis.ga
+            ${{ runner.temp }}/spice-galaxy/galaxy/workflows/tools.yml
+            ${{ runner.temp }}/spice-galaxy/tools-runtime-evidence/*.json
+            ${{ runner.temp }}/spice-galaxy/workflow-runtime-evidence/*.json
