@@ -347,7 +347,7 @@ def check(args, work, report):
     report["galaxy"] = {"commit": observed, "profile": "25.0", "server_python": "3.11"}
     report["planemo_configuration_adapter"] = {
         "file": "scripts/planemo_published.py", "sha256": sha256(ROOT / "scripts/planemo_published.py"),
-        "purpose": "Register Test Tool Shed for shed_test tool runnables; no Planemo/Galaxy/tool files patched"}
+        "purpose": "Register Test Tool Shed and retain all expanded remote test results; installed package files unchanged"}
     venv = work / "galaxy-venv"
     run([planemo.parent / "python", "-m", "venv", venv], work, env, "galaxy-venv", report, 180)
     run([venv / "bin/python", "-m", "pip", "install", "pip==26.2.1"], work, env, "galaxy-pip", report, 300)

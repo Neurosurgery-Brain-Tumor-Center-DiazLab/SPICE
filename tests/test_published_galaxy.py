@@ -5,6 +5,7 @@ import sqlite3
 from pathlib import Path
 import sys
 import tempfile
+from types import SimpleNamespace
 import unittest
 import xml.etree.ElementTree as ET
 
@@ -22,6 +23,20 @@ class PublishedValidation(unittest.TestCase):
         self.assertEqual(configured, planemo_published.register_test_shed(configured))
         self.assertEqual({n.attrib['url'] for n in ET.fromstring(configured)},
                          {'https://toolshed.g2.bx.psu.edu', published.SHED})
+
+
+    def test_expanded_case_reporting_preserves_all_outcomes(self):
+        cases = [SimpleNamespace(tool_id='published', test_index=i) for i in range(6)]
+        responses = [{'id': f'published-{i}', 'data': {'status': 'success' if i < 5 else 'failure'}}
+                     for i in range(6)]
+        paired = planemo_published.pair_expanded_results(cases, responses)
+        self.assertEqual(len(paired), 6)
+        self.assertIs(paired[-1][1], responses[-1])
+        self.assertEqual(paired[-1][1]['data']['status'], 'failure')
+        with self.assertRaises(RuntimeError):
+            planemo_published.pair_expanded_results(cases, responses[:-1])
+        with self.assertRaises(RuntimeError):
+            planemo_published.pair_expanded_results(cases, list(reversed(responses)))
 
     def metadata(self):
         repository = {"id": published.REPOSITORY_ID, "owner": "diazlab", "name": "spice_lineage"}
