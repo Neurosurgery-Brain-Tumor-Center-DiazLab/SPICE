@@ -2,7 +2,9 @@
 
 **NOT EXECUTED. Stop before remote writes.** This runbook is prepared for a
 separate, explicit maintainer authorization. The [dated gate report](public-distribution-validation-2026-10-19.md)
-records current blockers. It does not authorize Main Tool Shed, Bioconda, Zenodo,
+records current administrative blockers and the separate container execution
+limitation. Accepted Conda-backed Galaxy validation is the technical basis for
+this publication. This runbook does not authorize Main Tool Shed, Bioconda, Zenodo,
 Git tag, workflow-release or GTN changes.
 
 Planemo 0.75.47 `--help` was checked for every command below. There is no

@@ -106,31 +106,50 @@ Detailed evidence: `phase1-artifact/artifact.json`, retained API/index/archive,
 `python-dependencies.log`. Historical source validation used Python 3.11; this
 independent public solve used Python 3.14.8, with no claim about other platforms.
 
-## Public BioContainer — INCOMPLETE / NO-GO gate
+## Public BioContainer — registry identity verified; execution unvalidated
 
-No anonymously accessible public `biocontainers/spice-lineage` image was found.
-**Exact tag: unavailable. Digest: unavailable. Pull: NOT RUN. Execution: NOT RUN.**
-No tag was invented, and no locally built image was substituted.
+The follow-up at **2026-10-20T02:57:29Z** established that the public image is
+available. The Quay repository, tag, search and registry-v2 endpoints returned
+HTTP 200. This supersedes the earlier unsuccessful anonymous discovery checks;
+it does not imply that the image was created between those observations.
 
-- Quay repository/tag API and anonymous registry-v2 token/tag requests returned
-  HTTP **401**. This cannot distinguish a private repository from a nonexistent
-  one; it does not establish a publicly pullable image.
-- [Quay search](https://quay.io/api/v1/find/repositories?query=spice-lineage)
-  returned HTTP 200 with `results: []`, `has_additional: false`.
-- A known public `biocontainers/iqtree` tag API returned HTTP 200, confirming
-  public Quay access worked. Its current tags were only a service-access control;
-  no IQ-TREE 3 dependency was used or selected for SPICE.
-- The BioContainers TRS API hostname failed DNS resolution on this host.
-- Docker, Podman, Skopeo, Singularity and Apptainer were absent on this WSL host.
-  A publicly discoverable tag/digest and a capable runtime remain required for
-  the image pull/execution gate. BayesTraits must remain external there too.
+| Identity | Verified value |
+| --- | --- |
+| Repository | `quay.io/biocontainers/spice-lineage` (public) |
+| Exact tag | `0.2.0--pyhdfd78af_0` |
+| Digest | `sha256:5792ced8951d88953a88fe45134ee46ce8549b273540162b1339c2252f5d5641` |
+| Platform | `linux/amd64` |
+| Registry-reported tag timestamp | `Mon, 19 Oct 2026 03:22:13 -0000` |
+| Layers / compressed bytes | 3 / 704,410,017 |
+| Full image pull / execution | NOT RUN / NOT RUN |
 
-The final registry refresh at `2026-10-20T02:00:15Z` returned the same 401 and
-empty search results (`quay-final-tags.json`, `quay-final-search.json`).
+The [public tag API](https://quay.io/api/v1/repository/biocontainers/spice-lineage/tag/?limit=100&onlyActiveTags=true)
+and [registry manifest](https://quay.io/v2/biocontainers/spice-lineage/manifests/0.2.0--pyhdfd78af_0)
+agree. Independently hashing the downloaded manifest bytes reproduces both the
+API digest and the registry `Docker-Content-Digest` header. The referenced image
+configuration was also downloaded and hash verified:
+`sha256:2752bd12dc09118114e13a98df4f508e716770dc91ff55cff1e831ba78e82b45`.
 
-Evidence: `quay-*.response`, `quay-*.http.json`, `quay-iqtree-control.json`,
-`public-preflight.json`, `container-runtime.json`. The Quay HTML page's HTTP 200
-is only a generic application shell and is not evidence of an existing image.
+No Docker/Podman runtime or Docker Desktop CLI is installed on this Windows/WSL
+host, so the layers were not pulled and the image was not executed. Manifest
+verification is not a container runtime pass. No local image was built or
+substituted. BayesTraits V4.1.3 remains an external dependency; the container's
+installed payload and scientific executable versions have not been inspected.
+
+Earlier evidence is retained: the repository/tag API and registry token/tag
+requests returned HTTP 401, and Quay search returned an empty list, including
+at `2026-10-20T02:00:15Z`. Those responses could not distinguish a private image
+from a nonexistent one. The BioContainers TRS hostname still fails DNS on this
+host. Public `biocontainers/iqtree` was only a registry-access control; no IQ-TREE
+3 dependency was selected for SPICE.
+
+Current evidence is under `readiness-followup/`: `quay-*.json`,
+`public-image-manifest.json`, `public-image-config.json`, and
+`public-container-recheck.json`. Earlier `quay-*.response`, `quay-*.http.json`,
+`container-result.json` and `quay-final-*.json` are historical observations.
+Per the maintainer's follow-up, container execution is tracked as a **separate
+distribution limitation**, not a reason to change scientific code or negate
+the accepted Conda-backed Galaxy evidence.
 
 ## Galaxy public-package validation
 
@@ -277,7 +296,9 @@ Only help/local commands were exercised. No `shed_create`, `shed_upload`,
   that this minimal disposable Galaxy has all optional services configured.
 - The first hosted workflow log had repeated macro-as-tool load failures; the
   explicit-wrapper registration fix and a second full hosted run resolved them.
-- Container registry/DNS/runtime limitations above remain unresolved.
+- The later registry recheck resolved anonymous image discovery and verified
+  its actual manifest digest. TRS DNS and the absence of a local container
+  runtime remain limitations; image execution is not claimed.
 
 The repository required runner `scripts/check_ci.py` also passed using the public
 runtime: `Python: discovered=54 run=54 skipped=0 failures=0 errors=0`. R QC tests
@@ -303,23 +324,80 @@ The immutable tag, scientific Python/R payload, algorithms, QC thresholds,
 scientific defaults, workflow scientific settings, IUC revision, Bioconda
 recipe/public package, Zenodo record and both Tool Sheds were untouched.
 Temporary BayesTraits handling is reported with the Galaxy outcome above.
-No GitHub PR has been created. The feature branch was pushed solely to dispatch
-the isolated hosted validation run. Main and the release tag were not updated.
+The feature branch was initially pushed for isolated hosted validation. The
+maintainer subsequently requested a PR into main and a review of all 17 changed
+files. PR creation does not authorize a merge or a Tool Shed write. Main and
+the release tag were not updated.
+
+## Maintainer-requested readiness follow-up and 17-file review
+
+The maintainer accepted the public Bioconda/Galaxy results as technical evidence
+and explicitly retained the no-publication/no-merge boundary. The reviewed
+archive was rehashed at `2026-10-20T02:55:30Z` and remains exactly
+`125a5180889a14186117a5e89235b8288da67e95abef3a0cb2d9804c952d19bc`
+(`readiness-followup/archive-recheck.json`). No archive member was edited during
+this follow-up.
+
+Account verification is **BLOCKED / UNVERIFIED**. Two browser initialization
+attempts failed; the second reported `windows sandbox failed:
+helper_unknown_error: setup refresh had errors`. Neither Linux nor Windows has
+a configured `TEST_TOOL_SHED_API_KEY` or standard Planemo configuration.
+The unauthenticated Test `/api/users/current` request returns HTTP 403; the
+repository query still returns `[]`. Thus this session cannot attest that an
+authenticated user is `diazlab` or prove create/update permission for
+`spice_lineage`. An absent public repository is not permission evidence.
+Secure environment credential setup or working browser access has been
+requested. No key value, cookie, password or credential file was read, printed
+or committed. Evidence: `readiness-followup/testshed-*.json` and
+`readiness-followup/account-verification.json`.
+
+All 17 changed files were reviewed against current main. No blocking code
+finding was identified in the validation changes. Two wiki pages used
+repository-relative links that would resolve incorrectly when
+published in GitHub Wiki; those links now use explicit repository URLs.
+
+| File | Review result |
+| --- | --- |
+| `.github/workflows/integration.yml` | Manual-only source choice; local default and read-only permissions preserved; public evidence allowlist excludes binaries/caches. |
+| `scripts/check_galaxy.py` | Separate public root/cache and origin checks; original local build/payload/origin path preserved; six-case/one-workflow acceptance and all pins retained. |
+| `scripts/check_public_distribution.py` | Official API/index/download hashes agree; immutable release hash and payload checks; actual installed origins and IQ-TREE/R contracts enforced. |
+| `tests/test_public_distribution.py` | Seven meaningful negative/positive gates cover identity, origin, payload, versions, missing records and unsuccessful/incomplete cases. |
+| `README.md` | Bioconda availability claims match verified evidence; independent publication statuses retained. |
+| `docs/distribution.md` | Merged recipe/public availability updated; local build and OCI regression remain documented. |
+| `docs/galaxy.md` | Public invocation and isolation documented; validated pins and external BayesTraits retained. |
+| `docs/integration-testing.md` | Local default and separate public mode accurately distinguished. |
+| `docs/public-distribution-validation-2026-10-19.md` | Evidence, failures/recovery, current registry identity, account limitation and boundaries recorded. |
+| `docs/test-toolshed-publication.md` | Proposed commands are explicit Test-targeted, hash-gated and unexecuted; credentials come only from environment. |
+| `galaxy/README.md` | Public package status and external administrator dependency accurately stated. |
+| `galaxy/tools/.shed.yml` | `diazlab/spice_lineage`, category, source/homepage and citation context retained; no scientific requirement change. |
+| `galaxy/tools/README.rst` | Package availability, citation and external dependency documented; pending full container verification remains accurate. |
+| `packaging/bioconda/README.md` | Upstream merge recorded; local regression recipe unchanged. |
+| `packaging/bioconda/spice-lineage/README.md` | Immutable source/checksum and maintainer facts retained; no recipe edit. |
+| `wiki/Galaxy.md` | Public mode documented; repository links corrected for GitHub Wiki use. |
+| `wiki/Installation.md` | Exact public build installation shown; repository evidence link corrected; image identity distinguished from unvalidated execution. |
+
+The tested implementation is commit `a3b29c584dd6abc059bab8d8ebe81b96d14a717a`;
+subsequent report/runbook/wiki edits are documentation only. The previously
+accepted 54-test required check and hosted six-case/full-workflow results remain
+applicable to unchanged implementation. The PR will run normal required CI;
+there is no reason to repeat the accepted manual Galaxy run for prose edits.
 
 ## Recommendation
 
-**GO for the public Conda and Galaxy execution gates; NO-GO for publication
-at this point.** Public installation, six wrapper cases, the full workflow,
-provenance checks, lint and archive inspection pass. Public BioContainer
-verification remains incomplete, and the signed-in Test Tool Shed account is
-unverified. Review/merge the documentation branch so its public `main` links
-resolve, address the remaining gates, and obtain **explicit maintainer
-authorization** before any Test Tool Shed creation/upload. No upload is queued
-or automatically scheduled.
+**Technically ready for Conda-backed Test Tool Shed publication; HOLD for
+administrative readiness and explicit authorization.** The public package,
+Galaxy execution, lint and reviewed archive pass. The authenticated Test account
+and create/update permission still require verification. Review and authorize
+merging the PR so the archive's public `main` documentation links resolve, then
+obtain separate explicit authorization before any Test Tool Shed creation or
+upload. No merge, `shed_create`, `shed_upload`, `shed_update`, Main Tool Shed,
+Bioconda, Zenodo or release-tag write has been performed.
 
-All 17 changed files are validation, documentation or publication metadata.
-The tested implementation is commit `a3b29c584dd6abc059bab8d8ebe81b96d14a717a`;
-subsequent report/runbook edits are documentation only. Final source/tag checks
-are recorded in `final-boundaries.json`. A portable evidence bundle, with a
-per-file SHA-256 manifest, is retained alongside the raw evidence; it excludes
-installed environments, dependency caches and all BayesTraits binaries.
+Public image registry identity is now verified; full container pull/execution
+remains a separate distribution limitation and does not invalidate the accepted
+Conda-backed Galaxy results. No publication is queued or scheduled.
+
+The original portable evidence bundle and per-file SHA-256 manifest remain
+unchanged. New read-only checks and the file review are retained separately
+under `readiness-followup/`; installed environments, dependency caches and
+BayesTraits binaries are not included in review deliverables.
