@@ -18,3 +18,15 @@ eval(parse(text=code[a:(b-1)]))
 stopifnot(nrow(perm_results)==0,ncol(perm_row(1,s))==ncol(perm_row(2,status='error')))
 stopifnot(is.na(perm_row(2,status='error')$self_renewal))
 cat('PASS plasticity metric and output-contract tests\n')
+
+# Execute the production completion/exit path with synthetic permutation results.
+end <- grep('^cat\\("SPICE plasticity completed',code)
+for (good in c(TRUE,FALSE)) {
+ perm_replicates <- 2
+ observed_summary <- s
+ test_summary <- spice_metric_test(c(0,NA),c("ok",if(good) "ok" else "error"),10,2,"greater")
+ error <- tryCatch({eval(parse(text=code[end:length(code)])); FALSE},error=function(e) {
+   stopifnot(grepl("Permutation test incomplete",conditionMessage(e))); TRUE
+ })
+ stopifnot(error == !good)
+}
