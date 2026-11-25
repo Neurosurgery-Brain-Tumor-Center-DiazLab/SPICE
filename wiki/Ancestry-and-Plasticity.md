@@ -75,7 +75,7 @@ Each replicate shuffles state labels among tips without replacement on the fixed
 
 For the default `greater` alternative, the empirical P-value is `(b + 1) / (B + 1)`, where `b` counts null values at least as large as observed and `B` is the number of requested successful replicates. `less` reverses the comparison; `two-sided` is `min(1, 2 * min(p_lower, p_upper))`, using inclusive, plus-one empirical tails. Undefined scores from successful fits are omitted separately for each metric; failed fits still block inference.
 
-All requested replicates must succeed with finite plasticity. Otherwise the test is `incomplete`, its P-value is `NA`, and the command exits unsuccessfully while retaining diagnostic evidence. Do not calculate significance using only successful replicates.
+All requested fits must succeed. Undefined scores from successful fits are excluded from the metric-specific null. A failed fit or missing replicate makes the test `incomplete`; an undefined observation or empty finite null also prevents inference. These conditions produce an NA P-value and an unsuccessful command exit while retaining diagnostic evidence.
 
 For observed transitions only:
 
