@@ -107,12 +107,13 @@ utils::write.table(
   sep="\t", row.names=FALSE, quote=FALSE
 )
 
-perm_results <- data.frame(
-  permutation=integer(0),
-  plasticity=numeric(0),
-  status=character(0),
-  stringsAsFactors=FALSE
-)
+perm_template <- spice_summarize_plasticity(data.frame(transition=character(0)))
+perm_row <- function(i, summary=perm_template, status="ok") {
+  if (status != "ok") summary[1, ] <- NA
+  data.frame(permutation=i, plasticity=summary$cellular_plasticity,
+             status=status, summary, stringsAsFactors=FALSE)
+}
+perm_results <- perm_row(0)[FALSE, ]
 
 if (perm_replicates > 0) {
   if (bayestraits_bin == "NA" || !file.exists(bayestraits_bin)) {
@@ -155,19 +156,9 @@ if (perm_replicates > 0) {
         min_probability=min_probability
       )
       sm <- spice_summarize_plasticity(tr)
-      data.frame(
-        permutation=i,
-        plasticity=sm$cellular_plasticity,
-        status="ok",
-        stringsAsFactors=FALSE
-      )
+      perm_row(i, sm)
     }, error=function(e) {
-      data.frame(
-        permutation=i,
-        plasticity=NA_real_,
-        status=paste0("error: ", conditionMessage(e)),
-        stringsAsFactors=FALSE
-      )
+      perm_row(i, status=paste0("error: ", conditionMessage(e)))
     })
   }
 
@@ -187,23 +178,13 @@ utils::write.table(
   sep="\t", row.names=FALSE, quote=FALSE
 )
 
-test_valid <- perm_replicates > 0 && nrow(perm_results) == perm_replicates &&
-  all(perm_results$status == "ok" & is.finite(perm_results$plasticity))
-null <- perm_results$plasticity[perm_results$status == "ok" & is.finite(perm_results$plasticity)]
-obs <- observed_summary$cellular_plasticity
-test_summary <- data.frame(
-  test_status=if (perm_replicates == 0) "not_requested" else if (test_valid && is.finite(obs)) "pass" else "incomplete",
-  observed_plasticity=obs,
-  perm_mean=if (length(null)) mean(null) else NA_real_,
-  perm_sd=if (length(null) > 1) stats::sd(null) else NA_real_,
-  perm_median=if (length(null)) stats::median(null) else NA_real_,
-  empirical_p=if (test_valid) spice_empirical_p(null, obs, alternative) else NA_real_,
-  z_score=if (test_valid && length(null) > 1 && stats::sd(null) > 0) (obs - mean(null))/stats::sd(null) else NA_real_,
-  n_permutations_requested=perm_replicates,
-  n_permutations_successful=length(null),
-  alternative=alternative,
-  stringsAsFactors=FALSE
-)
+test_summary <- spice_metric_test(perm_results$plasticity, perm_results$status,
+  observed_summary$cellular_plasticity, perm_replicates, alternative)
+reverse_test <- spice_metric_test(perm_results$P_reverse, perm_results$status,
+  observed_summary$P_reverse, perm_replicates, alternative)
+names(reverse_test) <- paste0("reverse_", names(reverse_test))
+test_summary <- cbind(test_summary, reverse_test)
+
 utils::write.table(
   test_summary,
   file.path(output_dir, paste0(prefix, ".plasticity_test.tsv")),
