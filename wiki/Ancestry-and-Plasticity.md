@@ -73,9 +73,9 @@ Uncertain edges are excluded from the denominator and reported separately. If no
 
 Each replicate shuffles state labels among tips without replacement on the fixed tree, preserving state counts, reruns ancestry, and recomputes plasticity using the same state order. This tests the association of observed labels with positions on that tree under that particular exchangeability null.
 
-For the default `greater` alternative, the empirical P-value is `(b + 1) / (B + 1)`, where `b` counts null values at least as large as observed and `B` is the number of requested successful replicates. `less` reverses the comparison; `two-sided` compares absolute deviations from the null median.
+For the default `greater` alternative, the empirical P-value is `(b + 1) / (B + 1)`, where `b` counts null values at least as large as observed and `B` is the number of requested successful replicates. `less` reverses the comparison; `two-sided` is `min(1, 2 * min(p_lower, p_upper))`, using inclusive, plus-one empirical tails. Undefined scores from successful fits are omitted separately for each metric; failed fits still block inference.
 
-All requested replicates must succeed with finite plasticity. Otherwise the test is `incomplete`, its P-value is `NA`, and the command exits unsuccessfully while retaining diagnostic evidence. Do not calculate significance using only successful replicates.
+All requested fits must succeed. Undefined scores from successful fits are excluded from the metric-specific null. A failed fit or missing replicate makes the test `incomplete`; an undefined observation or empty finite null also prevents inference. These conditions produce an NA P-value and an unsuccessful command exit while retaining diagnostic evidence.
 
 For observed transitions only:
 
@@ -86,3 +86,18 @@ spice plasticity inputs/clone.nwk inputs/cell_states.tsv \
 ```
 
 This does not need BayesTraits execution for plasticity, but still requires valid QC-bearing ancestry. Its test status is `not_requested` and P-value is `NA`. Use [Workflow](Workflow.md) to summarize a planned family of clone tests with BH correction, and read the [scientific limitations](Scientific-Assumptions-and-Limitations.md) before interpreting significance.
+
+
+The raw `cellular_plasticity` percentage is retained. `P_reverse` reports
+100 × dedifferentiation / (differentiation + dedifferentiation), or NA when
+there are no directional edges. Each permutation exports all transition counts,
+informative and total edge counts, informative fraction, both scores and execution
+status. Failed fits retain NA counts rather than fabricated zeros.
+
+The test table includes `DeltaP` (observed minus null median), 2.5/97.5% null
+quantiles, valid/undefined/failed counts and a parallel `reverse_` set of test
+fields. Delta is in percentage points. Empty nulls and undefined observations
+have explicit statuses and NA p-values. `n_permutations_successful` counts finite
+scores for that metric. Existing clone aggregation and BH adjustment are unchanged.
+Tip shuffling measures phylogenetic state organization relative to random labels;
+it is not a test that biological reverse transitions never occurred.

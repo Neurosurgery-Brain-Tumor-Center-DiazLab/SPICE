@@ -40,6 +40,7 @@ def main():
         raise RuntimeError("Required Python suite failed, skipped tests, or ran no tests")
 
     run(["Rscript", "--vanilla", "tests/test_mcmc_qc.R"])
+    run(["Rscript", "--vanilla", "tests/test_plasticity_metrics.R"])
     run([sys.executable, "SPICE.py", "--help"])
     version = subprocess.check_output(
         [sys.executable, "SPICE.py", "--version"], cwd=ROOT, text=True, timeout=30
