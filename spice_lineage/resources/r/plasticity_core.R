@@ -226,8 +226,8 @@ cat("SPICE plasticity completed.\n")
 cat("Observed plasticity:", observed_summary$cellular_plasticity, "\n")
 cat("Informative transitions:", observed_summary$informative_transitions, "\n")
 if (perm_replicates > 0) {
-  cat("Successful permutations:", length(null), "/", perm_replicates, "\n")
+  cat("Successful permutations:", test_summary$n_permutations_successful, "/", perm_replicates, "\n")
   cat("Empirical p-value:", test_summary$empirical_p, "\n")
 }
 
-if (perm_replicates > 0 && (!test_valid || !is.finite(obs))) stop("Permutation test incomplete; no valid p-value published. Inspect retained replicate logs.")
+if (perm_replicates > 0 && test_summary$test_status != "pass") stop("Permutation test incomplete; no valid p-value published. Inspect retained replicate logs.")
