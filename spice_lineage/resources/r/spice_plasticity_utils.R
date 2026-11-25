@@ -173,6 +173,10 @@ spice_summarize_plasticity <- function(transitions) {
     differentiation_fraction=frac("differentiation"),
     dedifferentiation_fraction=frac("dedifferentiation"),
     cellular_plasticity=100 * frac("dedifferentiation"),
+    reverse_denominator=as.integer(counts["differentiation"] + counts["dedifferentiation"]),
+    P_reverse=if (sum(counts[c("differentiation", "dedifferentiation")]) > 0)
+      100 * counts["dedifferentiation"] / sum(counts[c("differentiation", "dedifferentiation")]) else NA_real_,
+    informative_fraction=if (total_edges > 0) informative / total_edges else NA_real_,
     stringsAsFactors=FALSE
   )
 }
@@ -186,8 +190,8 @@ spice_empirical_p <- function(null, observed, alternative="greater") {
   } else if (alternative == "less") {
     b <- sum(null <= observed)
   } else if (alternative == "two-sided") {
-    center <- stats::median(null)
-    b <- sum(abs(null - center) >= abs(observed - center))
+    return(min(1, 2 * min((1 + sum(null <= observed))/(length(null) + 1),
+                         (1 + sum(null >= observed))/(length(null) + 1))))
   } else {
     stop("alternative must be greater, less, or two-sided.")
   }
@@ -199,4 +203,29 @@ spice_transition_compatibility <- function(transitions) {
   colnames(out)[colnames(out) == "parent_node"] <- "parent_label"
   colnames(out)[colnames(out) == "child_node"] <- "child_label"
   out[,c("edge_id", "parent_label", "parent_state", "child_label", "child_state", "transition")]
+}
+
+# Undefined scores from successful fits are excluded per metric. Failed fits
+# remain failures and block inference for the requested permutation family.
+spice_metric_test <- function(scores, status, observed, requested, alternative) {
+  null <- scores[status == "ok" & is.finite(scores)]
+  complete <- requested > 0 && length(scores) == requested && all(status == "ok")
+  valid <- complete && is.finite(observed) && length(null) > 0
+  data.frame(
+    test_status=if (requested == 0) "not_requested" else if (!complete) "incomplete" else
+      if (!is.finite(observed)) "undefined_observed" else if (!length(null)) "empty_null" else "pass",
+    observed_plasticity=observed,
+    perm_mean=if (length(null)) mean(null) else NA_real_,
+    perm_sd=if (length(null)>1) stats::sd(null) else NA_real_,
+    perm_median=if (length(null)) stats::median(null) else NA_real_,
+    DeltaP=if (is.finite(observed) && length(null)) observed - stats::median(null) else NA_real_,
+    perm_q025=if (length(null)) unname(stats::quantile(null, .025)) else NA_real_,
+    perm_q975=if (length(null)) unname(stats::quantile(null, .975)) else NA_real_,
+    empirical_p=if (valid) spice_empirical_p(null, observed, alternative) else NA_real_,
+    z_score=if (valid && length(null)>1 && stats::sd(null)>0) (observed-mean(null))/stats::sd(null) else NA_real_,
+    n_permutations_requested=requested,
+    n_permutations_successful=length(null),
+    n_permutations_undefined=sum(status == "ok" & !is.finite(scores)),
+    n_permutations_failed=sum(status != "ok"), alternative=alternative,
+    stringsAsFactors=FALSE)
 }
